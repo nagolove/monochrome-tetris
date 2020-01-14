@@ -1,9 +1,65 @@
 local lb = require "kons".new()
 local inspect = require "inspect"
-local fieldWidth, fieldHeight = 20, 40
+local fieldWidth, fieldHeight = 25, 50
 local lg = love.graphics
 local quadWidth = 10
-local paused = false
+local paused = true
+local scores = 0
+local field = {}
+local figure = {}
+local figureWidth, figureHeight = 5, 5
+local figures = {
+  --[[
+  { 
+    {false, true, true, true, true},
+    {true, true, true, true, true},
+    {true, true, true, true, true},
+    {true, true, true, true, true},
+    {true, true, true, false, true},
+  },
+  { 
+    {true, true, true, true, true},
+    {true, true, true, true, true},
+    {true, true, true, true, true},
+    {true, true, true, true, true},
+    {true, true, true, true, true},
+  }, --]]
+  { 
+    {false, false, false, false, false},
+    {false, false, false, false, false},
+    {true, true, true, true, true},
+    {false, false, false, false, false},
+    {false, false, false, false, false},
+  },
+  { 
+    {false, false, false, false, false},
+    {false, false, false, false, false},
+    {true, true, true, false, false},
+    {true, true, true, false, false},
+    {true, true, true, false, false},
+  },
+  { 
+    {false, false, false, false, false},
+    {false, false, false, false, false},
+    {false, false, false, false, false},
+    {false, false, false, true, false},
+    {true, true, true, true, false},
+  },
+  { 
+    {false, false, false, false, false},
+    {false, false, false, false, false},
+    {false, true, false, false, false},
+    {false, true, false, false, false},
+    {true, true, true, false, false},
+  },
+  { 
+    {false, false, false, false, false},
+    {false, false, false, false, false},
+    {true, true, false, false, false},
+    {false, true, false, false, false},
+    {false, true, true, false, false},
+  },
+}
 
 function drawField(field)
   local w, h = lg.getDimensions()
@@ -15,38 +71,56 @@ function drawField(field)
   local d = 1
 
   for i = 1, fieldHeight do
+    lg.line(startx, starty + i * quadWidth, startx + fieldWidth * quadWidth, starty + i * quadWidth)
+  end
+  for i = 1, fieldWidth do
+    lg.line(startx + i * quadWidth, starty, startx + i * quadWidth, starty + fieldHeight * quadWidth)
+  end
+
+  for i = 1, fieldHeight do
     for j = 1, fieldWidth do
       if field[i][j] then
         lg.setColor(filledColor)
       else
         lg.setColor(cleanColor)
       end
-      lg.rectangle("fill", startx + (j - d)* quadWidth + gap, 
+      lg.rectangle("fill", startx + (j - d) * quadWidth + gap, 
         starty + (i - d) * quadWidth + gap, quadWidth - gap, 
         quadWidth - gap)
     end
   end
+  
+  lg.setColor{0.2, 0.8, 0.1}
+  lg.rectangle("fill", startx, starty, quadWidth, quadWidth)
   --print(startx, starty)
   lg.setColor{1, 1, 1, 1}
   lg.rectangle("line", startx - gap, starty - gap, fieldWidth * quadWidth +
     gap * 2, fieldHeight * quadWidth + gap * 2)
 end
 
-function updateField(field)
-  local toRemove = {}
-  for i = 1, #field do
-    local free = true
-    local arr = field[i]
-    for j = 1, #arr do
-      free = free and arr[j]
-    end
-    if free then
-      toRemove[#toRemove + 1] = i
+function drawFigure(figure)
+  local w, h = lg.getDimensions()
+  local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
+    quadWidth) / 2
+  local gap = 1
+  local cleanColor = {0, 0, 0}
+  local filledColor = {1, 1, 1}
+  --print(inspect(figure))
+  local x, y = figure.x, figure.y
+  local d = 2 -- почему правильно рисуется при d == 2??
+
+  lg.setColor(filledColor)
+  for i = 1, figureHeight do
+    for j = 1, figureWidth do
+      if figure.fig[i][j] then
+        lg.rectangle("fill", startx + (j - d + x) * quadWidth + gap, 
+          starty + (i - d + y) * quadWidth + gap, quadWidth - gap, 
+          quadWidth - gap)
+      end
     end
   end
-  for i = #toRemove, 1, -1 do
-    table.remove(field, i)
-  end
+  lg.setColor{0.7, 0.1, 0.1}
+  lg.rectangle("line", startx + (figure.x - 1) * quadWidth, starty + (figure.y - 1) * quadWidth, figureWidth * quadWidth, figureHeight * quadWidth)
 end
 
 function createField()
@@ -76,116 +150,68 @@ function removeFullRows(field)
           field[i][j] = field[i - 1][j]
         end
       end
+      scores = scores + fieldWidth
     end
     rowi = rowi - 1
   until rowi <= 1
 end
 
-local figure = {}
-local field = {}
-local figureWidth, figureHeight = 5, 5
-
-local figures = {
-    { 
-        {false, true, true, true, true},
-        {true, true, true, true, true},
-        {true, true, true, true, true},
-        {true, true, true, true, true},
-        {true, true, true, false, true},
-    },
-    { 
-        {true, true, true, true, true},
-        {true, true, true, true, true},
-        {true, true, true, true, true},
-        {true, true, true, true, true},
-        {true, true, true, true, true},
-    },
-    { 
-        {true, true, true, true, true},
-        {false, false, true, false, false},
-        {false, false, true, false, false},
-        {false, false, true, false, false},
-        {true, true, true, true, true},
-    },
-    { 
-        {false, false, false, false, false},
-        {false, false, true, false, false},
-        {false, false, true, false, false},
-        {false, false, true, false, false},
-        {false, true, true, true, false},
-    },
-    { 
-        {false, false, false, false, false},
-        {true, true, true, true, true},
-        {false, false, false, false, false},
-        {false, false, false, false, false},
-        {false, false, false, false, false},
-    },
-    {
-        {false, false, false, false, false},
-        {false, true, true, true, false},
-        {false, true, true, true, false},
-        {false, true, true, true, false},
-        {false, false, false, false, false},
-    }
-}
-
 -- returns figure
 function createFigure(field)
   local maxIdx = math.random(1, #figures)
   local figure = { 
-    fig = copyFigure(figures[maxIdx]),
+    fig = copyFigureInternal(figures[maxIdx]),
     x = 1,
     y = 1,
   }
-  local fig = figure.fig
-  -- ищу место, поместится фигура в поле?
-  --[[
-       [for i = 1, figureHeight do
-       [    for j = 1, figureWidth do
-       [        if field[i + figure.x - 1][j + figure.y - 1] and fig[i][j] then
-       [            return nil
-       [        end
-       [    end
-       [end
-       ]]
-  print("figure", inspect(figure))
   return figure
 end
 
-function drawFigure(figure)
-  local w, h = lg.getDimensions()
-  local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
-    quadWidth) / 2
-  local gap = 1
-  local cleanColor = {0, 0, 0}
-  local filledColor = {1, 1, 1}
-  --print(inspect(figure))
-  local x, y = figure.x, figure.y
-  local d = 2 -- почему правильно рисуется при d == 2??
-
-  lg.setColor(filledColor)
+function rotateFigireLeft(figure)
+  local new = { x = figure.x, y = figure.y, fig = {}}
+  local f = new.fig
   for i = 1, figureHeight do
+    local row = {}
     for j = 1, figureWidth do
-      if figure.fig[i][j] then
-        lg.rectangle("fill", startx + (j - d + x) * quadWidth + gap, 
-          starty + (i - d + y) * quadWidth + gap, quadWidth - gap, 
-          quadWidth - gap)
+      row[#row + 1] = false
+    end
+    f[#f + 1] = row
+  end
+  if checkFigureOnField(new, field) then
+--    print("new", inspect(new))
+--    print("figure", inspect(figure))
+    for i = 1, figureHeight do
+      for j = 1, figureWidth do
+        f[figureHeight - j + 1][i] = figure.fig[i][j]
       end
     end
+    figure.fig = f
+  else
+    print("no")
   end
 end
 
-function rotateFigireLeft(figure, field)
+-- некорректно работает поворот вправо
+function rotateFigureRight(figure)
+  local new = {}
+  for i = 1, figureHeight do
+    local row = {}
+    for j = 1, figureWidth do
+      row[#row + 1] = false
+    end
+    new[#new + 1] = row
+  end
+  print("new", inspect(new))
+  print("figure", inspect(figure))
+  for i = 1, figureHeight do
+    for j = 1, figureWidth do
+      new[j][figureHeight - i + 1] = figure.fig[i][j]
+    end
+  end
+  figure.fig = new
 end
 
-function rotateFigureRight(figure, field)
-end
-
-function copyFigure(src)
-  --print("copyFigure")
-  --print("src", inspect(src))
-  --print(figureHeight, figureWidth)
+function copyFigureInternal(src)
   dst = {}
   for i = 1, figureHeight do
     local row = {}
@@ -196,7 +222,6 @@ function copyFigure(src)
     --print("row", inspect(row))
     dst[#dst + 1] = row
   end
-  --print("dst", inspect(dst))
   return dst
 end
 
@@ -258,6 +283,7 @@ function updateFigure(figure, field)
 end
 
 local timestamp
+local latestSideMove
 
 function love.load(arg)
   --print(inspect(arg))
@@ -268,15 +294,21 @@ function love.load(arg)
   field = createField()
   --print("field", inspect(field))
 
-  field[25][1] = true
-  field[26][1] = true
-  field[27][1] = true
-  field[28][1] = true
-  field[29][1] = true
+--  field[25][1] = true
+--  field[26][1] = true
+--  field[27][1] = true
+--  field[28][1] = true
+--  field[29][1] = true
 
   timestamp = love.timer.getTime()
   figure = createFigure(field)
   print("start with", inspect(figure))
+  latestSideMove = love.timer.getTime()
+
+  local cnt, size = love.filesystem.read("highscores.txt")
+  if size ~= 0 then scores = cnt end
+  print("cnt", cnt, "size", size)
+  love.keyboard.setKeyRepeat(true)
 end
 
 local failed = false
@@ -289,11 +321,19 @@ function love.update(dt)
     return
   end
 
-  if love.keyboard.isDown("left") then
-    moveFigureLeft(figure, field)
-  elseif love.keyboard.isDown("right") then
-    moveFigureRight(figure, field)
-  end
+  local sideMovePause = 0.03
+--  -- еще не удобное управление
+--  if not love.keyboard.isDown("lshift") and love.keyboard.isDown("left") then
+--    if latestSideMove + sideMovePause < time then
+--      moveFigureLeft(figure, field)
+--      latestSideMove = time
+--    end
+--  elseif not love.keyboard.isDown("lshift") and love.keyboard.isDown("right") then
+--    if latestSideMove + sideMovePause < time then
+--      moveFigureRight(figure, field)
+--      latestSideMove = time
+--    end
+--  end
 
   local pause = love.keyboard.isDown("up") and 0.01 or 0.3
   if timestamp + pause <= time then
@@ -308,7 +348,7 @@ function love.update(dt)
       failed = true
     end
   end
-  
+
   removeFullRows(field)
 end
 
@@ -319,15 +359,24 @@ function checkFigureOnField(figure, field)
   for i = 1, figureHeight do
     for j = 1, figureWidth do
       -- ограничение передвижения фигуры по ширине поля
-      if f[i][j] and (j + x - 1) < 1 or (j + x - 1) > fieldWidth then
-        return false
+      if f[i][j] and ((j + x - 1) < 1) or ((j + x - 1) > fieldWidth) then
+--        return false
       end
       if f[i][j] and y + i - 2 == fieldHeight then
         print("Fail to ceil")
         --mergeFigure(figure, field)
         return false
       end
+      -- collision figure with field
       if f[i][j] and field[i + y - 1][j + x - 1] then
+        return false
+      end
+    end
+  end
+  for i = 1, figureHeight do
+    for j = 1, figureWidth do
+      -- ограничение передвижения фигуры по ширине поля
+      if f[i][j] and ((j + x - 1) < 1) or ((j + x - 1) > fieldWidth) then
         return false
       end
     end
@@ -345,31 +394,50 @@ end
 function moveFigureRight(figure, field)
   figure.x = figure.x + 1
   if not checkFigureOnField(figure, field) then
+    print("not right")
     figure.x = figure.x - 1
   end
 end
 
-function love.keypressed(_, key)
+function love.keypressed(_, key, isrepeat)
   if key == "escape" then
     love.event.quit()
   elseif key == "p" then
     paused = not paused
+  elseif love.keyboard.isDown("lshift") and key == "left" then
+    rotateFigireLeft(figure)
+  elseif love.keyboard.isDown("lshift") and key == "right" then
+    rotateFigureRight(figure)
+    -- еще не удобное управление
+  elseif not love.keyboard.isDown("lshift") and key == "left" then
+    moveFigureLeft(figure, field)
+  elseif not love.keyboard.isDown("lshift") and key == "right" then
+    moveFigureRight(figure, field)
   end
 end
 
 function love.draw()
+  local w, h = lg.getDimensions()
+  local fieldWidthPx = fieldWidth * quadWidth
+  local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
+    quadWidth) / 2
   if gameover then
-    local w, h = lg.getDimensions()
-    local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
-      quadWidth) / 2
-    lg.print("Game over", startx, starty, 0, "center")
-    lg.print("Press 'c' to new round", startx, 
+    lg.printf("Game over", startx, starty, 0, "center")
+    lg.printf("Press 'c' to new round", startx, 
       starty + lg.getFont():getHeight(), 0, "center")
   end
+  lg.setColor{1, 1, 1}
+  --lg.printf(string.format("Scores: %d", scores), startx, 0, 0, "center")
+  lg.print(string.format("Scores: %d", scores), startx, 0, 0)
+  lg.print(string.format("x, y %d %d", figure.x, figure.y), startx, lg.getFont():getHeight(), 0)
   if failed then
     lb:pushi("Failed")
   end
   drawField(field)
   drawFigure(figure)
   lb:draw()
+end
+
+function love.quit()
+  love.filesystem.write("highscores.txt", tostring(scores))
 end
