@@ -1,13 +1,13 @@
 local lb = require "kons".new()
 local inspect = require "inspect"
-local fieldWidth, fieldHeight = 25, 50
+local fieldWidth, fieldHeight = 20, 50
 local lg = love.graphics
 local quadWidth = 10
 local paused = true
 local scores = 0
 local field = {}
 local figure = {}
-local figureWidth, figureHeight = 5, 5
+local figureWidth, figureHeight = 4, 4
 local figures = {
   --[[
   { 
@@ -25,39 +25,46 @@ local figures = {
     {true, true, true, true, true},
   }, --]]
   { 
-    {false, false, false, false, false},
-    {false, false, false, false, false},
-    {true, true, true, true, true},
-    {false, false, false, false, false},
-    {false, false, false, false, false},
+    {false, false, false, false},
+    {false, false, false, false},
+    {true, true, true, true},
+    {false, false, false, false},
   },
   { 
-    {false, false, false, false, false},
-    {false, false, false, false, false},
-    {true, true, true, false, false},
-    {true, true, true, false, false},
-    {true, true, true, false, false},
+    {false, false, false, false},
+    {true, false, false, false},
+    {true, true, true, false},
+    {false, false, false, false},
   },
   { 
-    {false, false, false, false, false},
-    {false, false, false, false, false},
-    {false, false, false, false, false},
-    {false, false, false, true, false},
-    {true, true, true, true, false},
+    {false, false, false, false},
+    {false, false, false, true},
+    {false, true, true, true},
+    {false, false, false, false},
   },
   { 
-    {false, false, false, false, false},
-    {false, false, false, false, false},
-    {false, true, false, false, false},
-    {false, true, false, false, false},
-    {true, true, true, false, false},
+    {false, false, false, false},
+    {false, true, true, false},
+    {false, true, true, false},
+    {false, false, false, false},
   },
   { 
-    {false, false, false, false, false},
-    {false, false, false, false, false},
-    {true, true, false, false, false},
-    {false, true, false, false, false},
-    {false, true, true, false, false},
+    {false, false, false, false},
+    {false, true, true, false},
+    {true, true, false, false},
+    {false, false, false, false},
+  },
+  { 
+    {false, false, false, false},
+    {false, true, true, false},
+    {false, false, true, true},
+    {false, false, false, false},
+  },
+  { 
+    {false, false, false, false},
+    {false, false, true, false},
+    {false, true, true, true},
+    {false, false, false, false},
   },
 }
 
@@ -151,6 +158,9 @@ function removeFullRows(field)
         end
       end
       scores = scores + fieldWidth
+      if scores > highscores then
+        highscores = scores
+      end
     end
     rowi = rowi - 1
   until rowi <= 1
@@ -306,7 +316,7 @@ function love.load(arg)
   latestSideMove = love.timer.getTime()
 
   local cnt, size = love.filesystem.read("highscores.txt")
-  if size ~= 0 then scores = cnt end
+  if size ~= 0 then highscores = cnt else highscores = 0 end
   print("cnt", cnt, "size", size)
   love.keyboard.setKeyRepeat(true)
 end
@@ -428,8 +438,13 @@ function love.draw()
   end
   lg.setColor{1, 1, 1}
   --lg.printf(string.format("Scores: %d", scores), startx, 0, 0, "center")
-  lg.print(string.format("Scores: %d", scores), startx, 0, 0)
-  lg.print(string.format("x, y %d %d", figure.x, figure.y), startx, lg.getFont():getHeight(), 0)
+  local y = 0
+  lg.print(string.format("Hihg scores: %d", highscores), startx, y, 0)
+  y = y + lg.getFont():getHeight()
+  lg.print(string.format("Scores: %d", scores), startx, y, 0)
+  y = y + lg.getFont():getHeight()
+  lg.print(string.format("x, y %d %d", figure.x, figure.y), startx, y, 0)
+  y = y + lg.getFont():getHeight()
   if failed then
     lb:pushi("Failed")
   end
@@ -439,5 +454,5 @@ function love.draw()
 end
 
 function love.quit()
-  love.filesystem.write("highscores.txt", tostring(scores))
+  love.filesystem.write("highscores.txt", tostring(highscores))
 end
