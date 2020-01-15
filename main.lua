@@ -68,6 +68,31 @@ local figures = {
   },
 }
 
+function drawNextFigure()
+  local nextfig = copyFigureInternal(figures[nextFigure])
+  local w, h = lg.getDimensions()
+  local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
+    quadWidth) / 2
+  local gap = 1
+  local cleanColor = {0, 0, 0}
+  local filledColor = {1, 1, 1}
+  --print(inspect(figure))
+  local x, y = (startx + fieldWidth * quadWidth) - figureWidth * quadWidth, 2
+  print("x, y", x, y)
+  local d = 2 -- почему правильно рисуется при d == 2??
+
+  lg.setColor(filledColor)
+  for i = 1, figureHeight do
+    for j = 1, figureWidth do
+      if nextfig[i][j] then
+        lg.rectangle("fill", x + (j - 1) * quadWidth + gap, y + (i - 1)* quadWidth + gap, quadWidth - gap, quadWidth - gap)
+      end
+    end
+  end
+  lg.setColor{1, 1, 1}
+  lg.rectangle("line", x, y, figureWidth * quadWidth, figureHeight * quadWidth)
+end
+
 function drawField(field)
   local w, h = lg.getDimensions()
   local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
@@ -168,12 +193,12 @@ end
 
 -- returns figure
 function createFigure(field)
-  local maxIdx = math.random(1, #figures)
   local figure = { 
-    fig = copyFigureInternal(figures[maxIdx]),
+    fig = copyFigureInternal(figures[nextFigure]),
     x = 1,
     y = 1,
   }
+  nextFigure = math.random(1, #figures)
   return figure
 end
 
@@ -310,13 +335,14 @@ function love.load(arg)
 --  field[28][1] = true
 --  field[29][1] = true
 
-  timestamp = love.timer.getTime()
+  timestamp = love.timer.getTime()  
+  nextFigure = math.random(1, #figures)
   figure = createFigure(field)
   print("start with", inspect(figure))
   latestSideMove = love.timer.getTime()
 
   local cnt, size = love.filesystem.read("highscores.txt")
-  if size ~= 0 then highscores = cnt else highscores = 0 end
+  if size ~= 0 then highscores = tonumber(cnt) else highscores = 0 end
   print("cnt", cnt, "size", size)
   love.keyboard.setKeyRepeat(true)
 end
@@ -386,7 +412,7 @@ function checkFigureOnField(figure, field)
   for i = 1, figureHeight do
     for j = 1, figureWidth do
       -- ограничение передвижения фигуры по ширине поля
-      if f[i][j] and ((j + x - 1) < 1) or ((j + x - 1) > fieldWidth) then
+      if f[i][j] and ((j + x - 1) < 1) or ((j + x - 2) > fieldWidth) then
         return false
       end
     end
@@ -450,6 +476,7 @@ function love.draw()
   end
   drawField(field)
   drawFigure(figure)
+  drawNextFigure()
   lb:draw()
 end
 
