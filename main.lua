@@ -1,3 +1,7 @@
+local isAndroid = love.system.getOS() == "Android"
+--local isAndroid = true
+print("isAndroid", isAndroid)
+
 local lb = require "kons".new()
 local inspect = require "inspect"
 local fieldWidth, fieldHeight = 20, 50
@@ -8,6 +12,8 @@ local scores = 0
 local field = {}
 local figure = {}
 local figureWidth, figureHeight = 4, 4
+local sndClick = love.audio.newSource("sfx/click.wav", "static")
+
 local figures = {
   --[[
   { 
@@ -69,28 +75,31 @@ local figures = {
 }
 
 function drawNextFigure()
-  local nextfig = copyFigureInternal(figures[nextFigure])
-  local w, h = lg.getDimensions()
-  local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
-    quadWidth) / 2
-  local gap = 1
-  local cleanColor = {0, 0, 0}
-  local filledColor = {1, 1, 1}
-  --print(inspect(figure))
-  local x, y = (startx + fieldWidth * quadWidth) - figureWidth * quadWidth, 2
-  print("x, y", x, y)
-  local d = 2 -- почему правильно рисуется при d == 2??
+    local nextfig = copyFigureInternal(figures[nextFigure])
+    local w, h = lg.getDimensions()
+    local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
+        quadWidth) / 2
+    --print("drawNextFigure", startx, starty)
+    local gap = 1
+    local cleanColor = {0, 0, 0}
+    local filledColor = {1, 1, 1}
+    --print(inspect(figure))
+    local x, y = (startx + fieldWidth * quadWidth) - figureWidth * quadWidth, 2
+    print("x, y", x, y)
+    local d = 2 -- почему правильно рисуется при d == 2??
 
-  lg.setColor(filledColor)
-  for i = 1, figureHeight do
-    for j = 1, figureWidth do
-      if nextfig[i][j] then
-        lg.rectangle("fill", x + (j - 1) * quadWidth + gap, y + (i - 1)* quadWidth + gap, quadWidth - gap, quadWidth - gap)
-      end
+    lg.setColor(filledColor)
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            if nextfig[i][j] then
+                lg.rectangle("fill", x + (j - 1) * quadWidth + gap, 
+                    y + (i - 1)* quadWidth + gap, 
+                    quadWidth - gap, quadWidth - gap)
+            end
+        end
     end
-  end
-  lg.setColor{1, 1, 1}
-  lg.rectangle("line", x, y, figureWidth * quadWidth, figureHeight * quadWidth)
+    lg.setColor{1, 1, 1}
+    lg.rectangle("line", x, y, figureWidth * quadWidth, figureHeight * quadWidth)
 end
 
 function drawField(field)
@@ -342,7 +351,9 @@ function love.load(arg)
   latestSideMove = love.timer.getTime()
 
   local cnt, size = love.filesystem.read("highscores.txt")
-  if size ~= 0 then highscores = tonumber(cnt) else highscores = 0 end
+  --if size ~= 0 then highscores = tonumber(cnt) else highscores = 0 end
+  local value = tonumber(cnt)
+  highscores = value and value or 0
   print("cnt", cnt, "size", size)
   love.keyboard.setKeyRepeat(true)
 end
@@ -350,42 +361,43 @@ end
 local failed = false
 
 function love.update(dt)
-  local time = love.timer.getTime()
+    lb:update(dt)
+    local time = love.timer.getTime()
 
-  if paused then
-    timestamp = time
-    return
-  end
-
-  local sideMovePause = 0.03
---  -- еще не удобное управление
---  if not love.keyboard.isDown("lshift") and love.keyboard.isDown("left") then
---    if latestSideMove + sideMovePause < time then
---      moveFigureLeft(figure, field)
---      latestSideMove = time
---    end
---  elseif not love.keyboard.isDown("lshift") and love.keyboard.isDown("right") then
---    if latestSideMove + sideMovePause < time then
---      moveFigureRight(figure, field)
---      latestSideMove = time
---    end
---  end
-
-  local pause = love.keyboard.isDown("up") and 0.01 or 0.3
-  if timestamp + pause <= time then
-    timestamp = time
-
-    figure.y = figure.y + 1
-    failed = false
-    if not checkFigureOnField(figure, field) then
-      figure.y = figure.y - 1
-      mergeFigure(figure, field)
-      figure = createFigure(field)
-      failed = true
+    if paused then
+        timestamp = time
+        return
     end
-  end
 
-  removeFullRows(field)
+    local sideMovePause = 0.03
+    --  -- еще не удобное управление
+    --  if not love.keyboard.isDown("lshift") and love.keyboard.isDown("left") then
+    --    if latestSideMove + sideMovePause < time then
+    --      moveFigureLeft(figure, field)
+    --      latestSideMove = time
+    --    end
+    --  elseif not love.keyboard.isDown("lshift") and love.keyboard.isDown("right") then
+    --    if latestSideMove + sideMovePause < time then
+    --      moveFigureRight(figure, field)
+    --      latestSideMove = time
+    --    end
+    --  end
+
+    local pause = love.keyboard.isDown("up") and 0.01 or 0.3
+    if timestamp + pause <= time then
+        timestamp = time
+
+        figure.y = figure.y + 1
+        failed = false
+        if not checkFigureOnField(figure, field) then
+            figure.y = figure.y - 1
+            mergeFigure(figure, field)
+            figure = createFigure(field)
+            failed = true
+        end
+    end
+
+    removeFullRows(field)
 end
 
 -- возвращает true если фигуру можно поместить в данную позицию игрового поля.
@@ -436,48 +448,101 @@ function moveFigureRight(figure, field)
 end
 
 function love.keypressed(_, key, isrepeat)
-  if key == "escape" then
-    love.event.quit()
-  elseif key == "p" then
-    paused = not paused
-  elseif love.keyboard.isDown("lshift") and key == "left" then
-    rotateFigireLeft(figure)
-  elseif love.keyboard.isDown("lshift") and key == "right" then
-    rotateFigureRight(figure)
-    -- еще не удобное управление
-  elseif not love.keyboard.isDown("lshift") and key == "left" then
-    moveFigureLeft(figure, field)
-  elseif not love.keyboard.isDown("lshift") and key == "right" then
-    moveFigureRight(figure, field)
-  end
+    if key == "escape" then
+        love.event.quit()
+    elseif key == "p" then
+        paused = not paused
+    elseif love.keyboard.isDown("lshift") and key == "left" then
+        rotateFigireLeft(figure)
+    elseif love.keyboard.isDown("lshift") and key == "right" then
+        rotateFigureRight(figure)
+        -- еще не удобное управление
+    elseif not love.keyboard.isDown("lshift") and key == "left" then
+        moveFigureLeft(figure, field)
+    elseif not love.keyboard.isDown("lshift") and key == "right" then
+        moveFigureRight(figure, field)
+    elseif key == "r" then
+        isAndroid = not isAndroid
+    end
+    lb:push(0.5, "key %s", tostring(key))
+end
+
+function drawGameOver(startx, starty)
+    lg.printf("Game over", startx, starty, 0, "center")
+    lg.printf("Press 'c' to new round", startx, 
+        starty + lg.getFont():getHeight(), 0, "center")
+end
+
+function rotatePortrait()
+    local w, h = lg.getDimensions()
+    lg.translate(w / 2, h / 2)
+    lg.rotate(math.pi * 3 / 2)
+    lg.translate(-w / 2, -h / 2)
+end
+
+function drawScoresAndPos(startx, starty)
+    local y = 0
+    lg.print(string.format("High scores: %d", highscores), startx, y, 0)
+    y = y + lg.getFont():getHeight()
+    lg.print(string.format("Scores: %d", scores), startx, y, 0)
+    y = y + lg.getFont():getHeight()
+    lg.print(string.format("x, y %d %d", figure.x, figure.y), startx, y, 0)
+    y = y + lg.getFont():getHeight()
+end
+
+local drawList = {}
+
+function love.touchmoved(id, x, y, dx, dy, pressure)
+    table.insert(drawList, function()
+        lg.setColor{0, 0.2, 0}
+        lg.circle("fill", x, y, 10)
+    end)
+end
+
+function love.touchpressed(id, x, y, _, _, pressure)
+    sndClick:play()
+    if paused then
+        paused = false
+    end
 end
 
 function love.draw()
-  local w, h = lg.getDimensions()
-  local fieldWidthPx = fieldWidth * quadWidth
-  local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
-    quadWidth) / 2
-  if gameover then
-    lg.printf("Game over", startx, starty, 0, "center")
-    lg.printf("Press 'c' to new round", startx, 
-      starty + lg.getFont():getHeight(), 0, "center")
-  end
-  lg.setColor{1, 1, 1}
-  --lg.printf(string.format("Scores: %d", scores), startx, 0, 0, "center")
-  local y = 0
-  lg.print(string.format("Hihg scores: %d", highscores), startx, y, 0)
-  y = y + lg.getFont():getHeight()
-  lg.print(string.format("Scores: %d", scores), startx, y, 0)
-  y = y + lg.getFont():getHeight()
-  lg.print(string.format("x, y %d %d", figure.x, figure.y), startx, y, 0)
-  y = y + lg.getFont():getHeight()
-  if failed then
-    lb:pushi("Failed")
-  end
-  drawField(field)
-  drawFigure(figure)
-  drawNextFigure()
-  lb:draw()
+    --lg.translate(0.5, 0.5)
+    if isAndroid then
+        --rotatePortrait()
+    end
+
+    local w, h = lg.getDimensions()
+    local fieldWidthPx = fieldWidth * quadWidth
+    local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
+        quadWidth) / 2
+    if gameover then
+        drawGameOver(startx, starty)
+    end
+    lg.setColor{1, 1, 1}
+    drawScoresAndPos(startx, starty)
+    drawField(field)
+    drawFigure(figure)
+    drawNextFigure()
+    if failed then
+        lb:pushi("Failed")
+    end
+    lb:draw()
+
+    for _, v in pairs(drawList) do
+        v()
+    end
+
+    lg.push()
+    lg.scale(0.5, 0.5)
+    lg.setColor{0, 1, 0}
+    lg.circle("fill", 0, 0, 10)
+    lg.circle("fill", w / 2, 0, 10)
+    lg.circle("fill", w, h, 100)
+    lg.circle("fill", w / 2, h / 2, 10)
+    lg.pop()
+
+    drawList = {}
 end
 
 function love.quit()
