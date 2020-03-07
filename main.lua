@@ -79,7 +79,7 @@ function drawNextFigure()
     local w, h = lg.getDimensions()
     local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
         quadWidth) / 2
-    --print("drawNextFigure", startx, starty)
+    starty = 0
     local gap = 1
     local cleanColor = {0, 0, 0}
     local filledColor = {1, 1, 1}
@@ -103,39 +103,40 @@ function drawNextFigure()
 end
 
 function drawField(field)
-  local w, h = lg.getDimensions()
-  local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
+    lg.setColor{1, 1, 1}
+    local w, h = lg.getDimensions()
+    local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
     quadWidth) / 2
-  local gap = 1
-  local cleanColor = {0, 0, 0}
-  local filledColor = {1, 1, 1}
-  local d = 1
+    local gap = 1
+    local cleanColor = {0, 0, 0}
+    local filledColor = {1, 1, 1}
+    local d = 1
 
-  for i = 1, fieldHeight do
-    lg.line(startx, starty + i * quadWidth, startx + fieldWidth * quadWidth, starty + i * quadWidth)
-  end
-  for i = 1, fieldWidth do
-    lg.line(startx + i * quadWidth, starty, startx + i * quadWidth, starty + fieldHeight * quadWidth)
-  end
-
-  for i = 1, fieldHeight do
-    for j = 1, fieldWidth do
-      if field[i][j] then
-        lg.setColor(filledColor)
-      else
-        lg.setColor(cleanColor)
-      end
-      lg.rectangle("fill", startx + (j - d) * quadWidth + gap, 
-        starty + (i - d) * quadWidth + gap, quadWidth - gap, 
-        quadWidth - gap)
+    for i = 1, fieldHeight do
+        lg.line(startx, starty + i * quadWidth, startx + fieldWidth * quadWidth, starty + i * quadWidth)
     end
-  end
-  
-  lg.setColor{0.2, 0.8, 0.1}
-  lg.rectangle("fill", startx, starty, quadWidth, quadWidth)
-  --print(startx, starty)
-  lg.setColor{1, 1, 1, 1}
-  lg.rectangle("line", startx - gap, starty - gap, fieldWidth * quadWidth +
+    for i = 1, fieldWidth do
+        lg.line(startx + i * quadWidth, starty, startx + i * quadWidth, starty + fieldHeight * quadWidth)
+    end
+
+    for i = 1, fieldHeight do
+        for j = 1, fieldWidth do
+            if field[i][j] then
+                lg.setColor(filledColor)
+            else
+                lg.setColor(cleanColor)
+            end
+            lg.rectangle("fill", startx + (j - d) * quadWidth + gap, 
+            starty + (i - d) * quadWidth + gap, quadWidth - gap, 
+            quadWidth - gap)
+        end
+    end
+
+    lg.setColor{0.2, 0.8, 0.1}
+    lg.rectangle("fill", startx, starty, quadWidth, quadWidth)
+    --print(startx, starty)
+    lg.setColor{1, 1, 1, 1}
+    lg.rectangle("line", startx - gap, starty - gap, fieldWidth * quadWidth +
     gap * 2, fieldHeight * quadWidth + gap * 2)
 end
 
@@ -370,18 +371,6 @@ function love.update(dt)
     end
 
     local sideMovePause = 0.03
-    --  -- еще не удобное управление
-    --  if not love.keyboard.isDown("lshift") and love.keyboard.isDown("left") then
-    --    if latestSideMove + sideMovePause < time then
-    --      moveFigureLeft(figure, field)
-    --      latestSideMove = time
-    --    end
-    --  elseif not love.keyboard.isDown("lshift") and love.keyboard.isDown("right") then
-    --    if latestSideMove + sideMovePause < time then
-    --      moveFigureRight(figure, field)
-    --      latestSideMove = time
-    --    end
-    --  end
 
     local pause = love.keyboard.isDown("up") and 0.01 or 0.3
     if timestamp + pause <= time then
@@ -482,6 +471,7 @@ end
 
 function drawScoresAndPos(startx, starty)
     local y = 0
+    lg.setColor{0, 0.2, 1}
     lg.print(string.format("High scores: %d", highscores), startx, y, 0)
     y = y + lg.getFont():getHeight()
     lg.print(string.format("Scores: %d", scores), startx, y, 0)
@@ -501,29 +491,58 @@ end
 
 function love.touchpressed(id, x, y, _, _, pressure)
     sndClick:play()
+
     if paused then
         paused = false
     end
+
+    local w, h = lg.getDimensions()
+    if y > h / 2 then
+        print("left")
+        moveFigureLeft(figure, field)
+    else
+        print("right")
+        moveFigureRight(figure, field)
+    end
+end
+
+function game()
+    isGameOver = false
 end
 
 function love.draw()
     --lg.translate(0.5, 0.5)
+    --lg.scale(0.8, 0.8)
+    --local w, h = lg.getDimensions()
+    --lg.translate(w / (w * 0.8), h / (h * 0.8))
+
     if isAndroid then
-        --rotatePortrait()
+        lg.push()
+        rotatePortrait()
     end
 
     local w, h = lg.getDimensions()
     local fieldWidthPx = fieldWidth * quadWidth
+    --local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
+        --quadWidth) / 2
     local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
-        quadWidth) / 2
+        quadWidth) / 1
+
+    print("love.draw", startx, starty)
+    
     if gameover then
         drawGameOver(startx, starty)
     end
-    lg.setColor{1, 1, 1}
-    drawScoresAndPos(startx, starty)
+
     drawField(field)
     drawFigure(figure)
     drawNextFigure()
+    drawScoresAndPos(startx, starty)
+
+    if isAndroid then
+        lg.pop()
+    end
+
     if failed then
         lb:pushi("Failed")
     end
@@ -532,17 +551,17 @@ function love.draw()
     for _, v in pairs(drawList) do
         v()
     end
-
-    lg.push()
-    lg.scale(0.5, 0.5)
-    lg.setColor{0, 1, 0}
-    lg.circle("fill", 0, 0, 10)
-    lg.circle("fill", w / 2, 0, 10)
-    lg.circle("fill", w, h, 100)
-    lg.circle("fill", w / 2, h / 2, 10)
-    lg.pop()
-
     drawList = {}
+
+    --lg.push()
+    --lg.scale(0.5, 0.5)
+    --lg.setColor{0, 1, 0}
+    --lg.circle("fill", 0, 0, 10)
+    --lg.circle("fill", w / 2, 0, 10)
+    --lg.circle("fill", w, h, 100)
+    --lg.circle("fill", w / 2, h / 2, 10)
+    --lg.pop()
+
 end
 
 function love.quit()
