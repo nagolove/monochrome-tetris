@@ -17,7 +17,6 @@ local sndDone = love.audio.newSource("sfx/done.wav", "static")
 local pause = 0.1
 local drawList = {}
 local timestamp
-local latestSideMove
 
 local figures = {
   --[[
@@ -82,10 +81,10 @@ local figures = {
 function drawNextFigure()
     local nextfig = copyFigureInternal(figures[nextFigure])
     local w, h = lg.getDimensions()
-    --local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
-        --quadWidth) / 2
-    local startx, starty = 0, 0
-    starty = 0
+    local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
+        quadWidth) / 2
+    --local startx, starty = 0, 0
+    --starty = 0
     local gap = 1
     local cleanColor = {0, 0, 0}
     local filledColor = {1, 1, 1}
@@ -93,6 +92,11 @@ function drawNextFigure()
     local x, y = (startx + fieldWidth * quadWidth) - figureWidth * quadWidth, 2
     --print("x, y", x, y)
     local d = 2 -- почему правильно рисуется при d == 2??
+
+    lg.push()
+    local x0 = (w - figureWidth * quadWidth) / 2
+    x = x0
+    lg.translate(0, -figureWidth * quadWidth * 3)
 
     lg.setColor(filledColor)
     for i = 1, figureHeight do
@@ -106,6 +110,8 @@ function drawNextFigure()
     end
     lg.setColor{1, 1, 1}
     lg.rectangle("line", x, y, figureWidth * quadWidth, figureHeight * quadWidth)
+
+    lg.pop()
 end
 
 function drawField(field)
@@ -138,8 +144,8 @@ function drawField(field)
         end
     end
 
-    lg.setColor{0.2, 0.8, 0.1}
-    lg.rectangle("fill", startx, starty, quadWidth, quadWidth)
+    --lg.setColor{0.2, 0.8, 0.1}
+    --lg.rectangle("fill", startx, starty, quadWidth, quadWidth)
     --print(startx, starty)
     lg.setColor{1, 1, 1, 1}
     lg.rectangle("line", startx - gap, starty - gap, fieldWidth * quadWidth +
@@ -202,6 +208,7 @@ function removeFullRows(field)
             scores = scores + fieldWidth
             if scores > highscores then
                 highscores = scores
+                writeHighScores()
             end
         end
         rowi = rowi - 1
@@ -334,36 +341,83 @@ function updateFigure(figure, field)
     return false
 end
 
-function love.load(arg)
-  --print(inspect(arg))
-  --if arg[1] == "-checkFigureOnField_test" then
+local failed = false
 
-  if arg[#arg] == "-debug" then require "mobdebug".start() end
-  math.randomseed(os.time())
-  field = createField()
-  --print("field", inspect(field))
+local previousTouches = {}
 
---  field[25][1] = true
---  field[26][1] = true
---  field[27][1] = true
---  field[28][1] = true
---  field[29][1] = true
-
-  timestamp = love.timer.getTime()  
-  nextFigure = math.random(1, #figures)
-  figure = createFigure(field)
-  print("start with", inspect(figure))
-  latestSideMove = love.timer.getTime()
-
-  local cnt, size = love.filesystem.read("highscores.txt")
-  --if size ~= 0 then highscores = tonumber(cnt) else highscores = 0 end
-  local value = tonumber(cnt)
-  highscores = value and value or 0
-  print("cnt", cnt, "size", size)
-  love.keyboard.setKeyRepeat(true)
+function checkPreviosTouch(x, y)
+    for k, v in pairs(previousTouches) do
+        if v[1] == x and v[2] == y then
+            return true
+        end
+    end
+    return false
 end
 
-local failed = false
+local touchRects = {}
+
+function addTouchRect(x, y, w, h, name, func)
+    local t = { x = x, y = y, w = w, h = h, func = func}
+    touchRects[name] = t
+end
+
+function processTouches()
+    for k, v in pairs(touches) do
+        local x, y = love.touch.getPosition(v)
+
+        for k1, v1 in pairs(touchRects) do
+            if x > v1.x and x < v1.w and y > v1.y and y < v1.h then
+                v1.func()
+                break
+            end
+        end
+    end
+end
+
+function drawTouchRects()
+    lg.setColor{0.3, 0.3, 0.3, 0.3}
+    for k, v in pairs(touchRects) do
+        lg.rectangle("fill", v.x, v.y, v.w, v.h)
+    end
+end
+
+function love.load(arg)
+    --print(inspect(arg))
+    --if arg[1] == "-checkFigureOnField_test" then
+
+    if arg[#arg] == "-debug" then require "mobdebug".start() end
+    math.randomseed(os.time())
+    field = createField()
+    --print("field", inspect(field))
+
+    --  field[25][1] = true
+    --  field[26][1] = true
+    --  field[27][1] = true
+    --  field[28][1] = true
+    --  field[29][1] = true
+
+    timestamp = love.timer.getTime()  
+    nextFigure = math.random(1, #figures)
+    figure = createFigure(field)
+    print("start with", inspect(figure))
+
+    local cnt, size = love.filesystem.read("highscores.txt")
+    --if size ~= 0 then highscores = tonumber(cnt) else highscores = 0 end
+    local value = tonumber(cnt)
+    highscores = value and value or 0
+    print("cnt", cnt, "size", size)
+    love.keyboard.setKeyRepeat(true)
+
+    local w, h = lg.getDimensions()
+    local zonew = 70
+
+    addTouchRect(3.5 / 4 * w, 0, h, w, "bottom", function() end)
+    local rectw = 2.07 / 10 * w
+    addTouchRect(w / 1.5, 0, rectw, zonew, "rightdown", function() end)
+    addTouchRect(w / 1.5, h - zonew, rectw, zonew, "leftdown", function() end)
+    addTouchRect(w / 2.16, 0, w / 5, zonew, "rightup", function() end)
+    addTouchRect(w / 2.16, h - zonew, w / 5, zonew, "leftup", function() end)
+end
 
 function love.update(dt)
     lb:update(dt)
@@ -374,13 +428,12 @@ function love.update(dt)
         return
     end
 
-    local sideMovePause = 0.03
-
-    pause = love.keyboard.isDown("up") and 0.01 or 0.3
+    if not isAndroid then
+        pause = love.keyboard.isDown("up") and 0.01 or 0.3
+    end
 
     if timestamp + pause <= time then
         timestamp = time
-
         figure.y = figure.y + 1
         failed = false
         if not checkFigureOnField(figure, field) then
@@ -392,21 +445,36 @@ function love.update(dt)
     end
 
     local touches = love.touch.getTouches()
-    local previousTouches = {}
+    local newTouches = {}
+    pause = 0.1
     for k, v in pairs(touches) do
         local x, y = love.touch.getPosition(v)
+        table.insert(newTouches, {x, y})
 
         local w, h = lg.getDimensions()
-        if y > h / 2 then
-            print("left")
-            moveFigureLeft(figure, field)
-        else
-            print("right")
-            moveFigureRight(figure, field)
+        local touchWidth = 50
+        local xcritical = w * 3 / 4
+        if not checkPreviosTouch(x, y) then
+            if y > 0 and y < touchWidth then
+                if x > xcritical then
+                    moveFigureRight(figure, field)
+                else
+                    rotateFigureRight(figure, field)
+                end
+            elseif y < h and y > h - touchWidth then
+                if x > xcritical then
+                    moveFigureLeft(figure, field)
+                else
+                    rotateFigireLeft(figure, field)
+                end
+            end
+            pause = x > 3.8 / 4 * w and 0.3 or 0.1
         end
 
         print("bottomFieldY", bottomFieldY)
-        pause = bottomFieldY and x > bottomFieldY and 0.3 or 0.1
+        --pause = bottomFieldY and x > bottomFieldY and 0.3 or 0.1
+        
+
         print("pause", pause)
         print("x, y", x, y)
 
@@ -419,7 +487,9 @@ function love.update(dt)
             lg.setColor{0, 0.2, 0.5, 0.5}
             lg.circle("fill", x, y, 60)
         end)
+
     end
+    previousTouches = newTouches
 
     removeFullRows(field)
 end
@@ -504,67 +574,14 @@ function rotatePortrait()
     lg.translate(-w / 2, -h / 2)
 end
 
-function drawScoresAndPos2()
-    local w, h = lg.getDimensions()
-    --local fieldWidthPx = fieldWidth * quadWidth
-    ----local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
-    ----quadWidth) / 2
-    --local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
-        --quadWidth) / 1
-
-    --local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
-        --quadWidth) / 2
-
-    --local t
-    --t = w
-    --w = h
-    --h = t
-
-    local x, y = -100, 0
-
-    print("starty", starty)
-    local angle = 3 * math.pi / 2
-
-    local y = 0
-    lg.setColor{0, 0.2, 1}
-    local fontHeight = lg.getFont():getHeight()
-    lg.printf(string.format("High scores: %d", highscores), fontHeight, h, h, "center", angle)
-    lg.printf(string.format("High scores: %d", highscores), fontHeight * 2, h, h, "left", angle)
-    lg.printf(string.format("High scores: %d", highscores), fontHeight * 3, h, h, "right", angle)
-
-    x = x + lg.getFont():getHeight()
-    lg.print(string.format("Scores: %d", scores), x, y, angle)
-    x = x + lg.getFont():getHeight()
-    lg.print(string.format("x, y %d %d", figure.x, figure.y), x, y, angle)
-    x = x + lg.getFont():getHeight()
-
-    local rectw = 100
-    local x = (w - rectw) / 2
-    lg.rectangle("line", x, 0, w, h / 7)
-end
-
 function drawScoresAndPos()
     local w, h = lg.getDimensions()
-    --local fieldWidthPx = fieldWidth * quadWidth
-    ----local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
-    ----quadWidth) / 2
-    --local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
-        --quadWidth) / 1
-
-    local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
-        quadWidth) / 2
-
-    print("starty", starty)
+    local x, y = -100, 0
     local angle = 3 * math.pi / 2
-
-    local y = 0
-    lg.setColor{0, 0.2, 1}
-    lg.print(string.format("High scores: %d", highscores), startx, y)
-    y = y + lg.getFont():getHeight()
-    lg.print(string.format("Scores: %d", scores), startx, y)
-    y = y + lg.getFont():getHeight()
-    lg.print(string.format("x, y %d %d", figure.x, figure.y), startx, y)
-    y = y + lg.getFont():getHeight()
+    lg.setColor{1, 1, 1}
+    local fontHeight = lg.getFont():getHeight()
+    lg.printf(string.format("High scores: %d", highscores), fontHeight, h, h, "center", angle)
+    lg.printf(string.format("Scores: %d", scores), fontHeight * 2, h, h, "center", angle)
 end
 
 function love.touchmoved(id, x, y, dx, dy, pressure)
@@ -583,11 +600,6 @@ function game()
 end
 
 function love.draw()
-    --lg.translate(0.5, 0.5)
-    --lg.scale(0.8, 0.8)
-    --local w, h = lg.getDimensions()
-    --lg.translate(w / (w * 0.8), h / (h * 0.8))
-
     if isAndroid then
         lg.push()
         rotatePortrait()
@@ -603,35 +615,29 @@ function love.draw()
     drawField(field)
     drawFigure(figure)
     drawNextFigure()
-    --lg.rectangle("line", 0, 0, w / 3, h / 4)
+    
     if isAndroid then
         lg.pop()
     end
-    --lg.rectangle("line", 0, 0, w / 3, h / 4)
 
     if failed then
         lb:pushi("Failed")
     end
 
-    drawScoresAndPos2()
+    drawScoresAndPos()
+    drawTouchRects()
     lb:draw()
 
     for _, v in pairs(drawList) do
         v()
     end
     drawList = {}
+end
 
-    --lg.push()
-    --lg.scale(0.5, 0.5)
-    --lg.setColor{0, 1, 0}
-    --lg.circle("fill", 0, 0, 10)
-    --lg.circle("fill", w / 2, 0, 10)
-    --lg.circle("fill", w, h, 100)
-    --lg.circle("fill", w / 2, h / 2, 10)
-    --lg.pop()
-
+function writeHighScores()
+    love.filesystem.write("highscores.txt", tostring(highscores))
 end
 
 function love.quit()
-  love.filesystem.write("highscores.txt", tostring(highscores))
+    writeHighScores()
 end
