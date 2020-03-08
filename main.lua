@@ -13,6 +13,11 @@ local field = {}
 local figure = {}
 local figureWidth, figureHeight = 4, 4
 local sndClick = love.audio.newSource("sfx/click.wav", "static")
+local sndDone = love.audio.newSource("sfx/done.wav", "static")
+local pause = 0.1
+local drawList = {}
+local timestamp
+local latestSideMove
 
 local figures = {
   --[[
@@ -85,7 +90,7 @@ function drawNextFigure()
     local filledColor = {1, 1, 1}
     --print(inspect(figure))
     local x, y = (startx + fieldWidth * quadWidth) - figureWidth * quadWidth, 2
-    print("x, y", x, y)
+    --print("x, y", x, y)
     local d = 2 -- почему правильно рисуется при d == 2??
 
     lg.setColor(filledColor)
@@ -137,68 +142,69 @@ function drawField(field)
     --print(startx, starty)
     lg.setColor{1, 1, 1, 1}
     lg.rectangle("line", startx - gap, starty - gap, fieldWidth * quadWidth +
-    gap * 2, fieldHeight * quadWidth + gap * 2)
+        gap * 2, fieldHeight * quadWidth + gap * 2)
+    bottomFieldY = starty - gap + fieldHeight * quadWidth + gap * 2
 end
 
 function drawFigure(figure)
-  local w, h = lg.getDimensions()
-  local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
+    local w, h = lg.getDimensions()
+    local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
     quadWidth) / 2
-  local gap = 1
-  local cleanColor = {0, 0, 0}
-  local filledColor = {1, 1, 1}
-  --print(inspect(figure))
-  local x, y = figure.x, figure.y
-  local d = 2 -- почему правильно рисуется при d == 2??
+    local gap = 1
+    local cleanColor = {0, 0, 0}
+    local filledColor = {1, 1, 1}
+    --print(inspect(figure))
+    local x, y = figure.x, figure.y
+    local d = 2 -- почему правильно рисуется при d == 2??
 
-  lg.setColor(filledColor)
-  for i = 1, figureHeight do
-    for j = 1, figureWidth do
-      if figure.fig[i][j] then
-        lg.rectangle("fill", startx + (j - d + x) * quadWidth + gap, 
-          starty + (i - d + y) * quadWidth + gap, quadWidth - gap, 
-          quadWidth - gap)
-      end
+    lg.setColor(filledColor)
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            if figure.fig[i][j] then
+                lg.rectangle("fill", startx + (j - d + x) * quadWidth + gap, 
+                starty + (i - d + y) * quadWidth + gap, quadWidth - gap, 
+                quadWidth - gap)
+            end
+        end
     end
-  end
-  lg.setColor{0.7, 0.1, 0.1}
-  lg.rectangle("line", startx + (figure.x - 1) * quadWidth, starty + (figure.y - 1) * quadWidth, figureWidth * quadWidth, figureHeight * quadWidth)
+    lg.setColor{0.7, 0.1, 0.1}
+    lg.rectangle("line", startx + (figure.x - 1) * quadWidth, starty + (figure.y - 1) * quadWidth, figureWidth * quadWidth, figureHeight * quadWidth)
 end
 
 function createField()
-  field = {}
-  for j = 1, fieldHeight do
-    local row = {}
-    for i = 1, fieldWidth do
-      row[#row + 1] = false
+    field = {}
+    for j = 1, fieldHeight do
+        local row = {}
+        for i = 1, fieldWidth do
+            row[#row + 1] = false
+        end
+        field[#field + 1] = row
     end
-    field[#field + 1] = row
-  end
-  return field
+    return field
 end
 
 -- удаляет из поля полностью заполненные строки и смещает поле вниз.
 function removeFullRows(field)
-  local rowi = #field  
-  repeat
-    local full = true
-    for i = 1, fieldWidth do
-      full = full and field[rowi][i]
-      if not full then break end
-    end
-    if full then 
-      for i = rowi, 2, -1 do
-        for j = 1, fieldWidth do
-          field[i][j] = field[i - 1][j]
+    local rowi = #field  
+    repeat
+        local full = true
+        for i = 1, fieldWidth do
+            full = full and field[rowi][i]
+            if not full then break end
         end
-      end
-      scores = scores + fieldWidth
-      if scores > highscores then
-        highscores = scores
-      end
-    end
-    rowi = rowi - 1
-  until rowi <= 1
+        if full then 
+            for i = rowi, 2, -1 do
+                for j = 1, fieldWidth do
+                    field[i][j] = field[i - 1][j]
+                end
+            end
+            scores = scores + fieldWidth
+            if scores > highscores then
+                highscores = scores
+            end
+        end
+        rowi = rowi - 1
+    until rowi <= 1
 end
 
 -- returns figure
@@ -213,122 +219,119 @@ function createFigure(field)
 end
 
 function rotateFigireLeft(figure)
-  local new = { x = figure.x, y = figure.y, fig = {}}
-  local f = new.fig
-  for i = 1, figureHeight do
-    local row = {}
-    for j = 1, figureWidth do
-      row[#row + 1] = false
-    end
-    f[#f + 1] = row
-  end
-  if checkFigureOnField(new, field) then
---    print("new", inspect(new))
---    print("figure", inspect(figure))
+    local new = { x = figure.x, y = figure.y, fig = {}}
+    local f = new.fig
     for i = 1, figureHeight do
-      for j = 1, figureWidth do
-        f[figureHeight - j + 1][i] = figure.fig[i][j]
-      end
+        local row = {}
+        for j = 1, figureWidth do
+            row[#row + 1] = false
+        end
+        f[#f + 1] = row
     end
-    figure.fig = f
-  else
-    print("no")
-  end
+    if checkFigureOnField(new, field) then
+        --    print("new", inspect(new))
+        --    print("figure", inspect(figure))
+        for i = 1, figureHeight do
+            for j = 1, figureWidth do
+                f[figureHeight - j + 1][i] = figure.fig[i][j]
+            end
+        end
+        figure.fig = f
+    else
+        print("no")
+    end
 end
 
 -- некорректно работает поворот вправо
 function rotateFigureRight(figure)
-  local new = {}
-  for i = 1, figureHeight do
-    local row = {}
-    for j = 1, figureWidth do
-      row[#row + 1] = false
+    local new = {}
+    for i = 1, figureHeight do
+        local row = {}
+        for j = 1, figureWidth do
+            row[#row + 1] = false
+        end
+        new[#new + 1] = row
     end
-    new[#new + 1] = row
-  end
-  print("new", inspect(new))
-  print("figure", inspect(figure))
-  for i = 1, figureHeight do
-    for j = 1, figureWidth do
-      new[j][figureHeight - i + 1] = figure.fig[i][j]
+    print("new", inspect(new))
+    print("figure", inspect(figure))
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            new[j][figureHeight - i + 1] = figure.fig[i][j]
+        end
     end
-  end
-  figure.fig = new
+    figure.fig = new
 end
 
 function copyFigureInternal(src)
-  dst = {}
-  for i = 1, figureHeight do
-    local row = {}
-    for j = 1, figureWidth do
-      --print("src", src[i][j])
-      row[#row + 1] = src[i][j]
+    dst = {}
+    for i = 1, figureHeight do
+        local row = {}
+        for j = 1, figureWidth do
+            --print("src", src[i][j])
+            row[#row + 1] = src[i][j]
+        end
+        --print("row", inspect(row))
+        dst[#dst + 1] = row
     end
-    --print("row", inspect(row))
-    dst[#dst + 1] = row
-  end
-  return dst
+    return dst
 end
 
 function setupFigure(figure)
-  figure = nil
-  for i = 1, figureHeight do
-    local row = {}
-    for j = 1, figureWidth do
-      row[#row + 1] = false
+    figure = nil
+    for i = 1, figureHeight do
+        local row = {}
+        for j = 1, figureWidth do
+            row[#row + 1] = false
+        end
+        figure[#figure + 1] = row
     end
-    figure[#figure + 1] = row
-  end
 end
 
 function mergeFigure(figure, field)
-  print("mergeFigure")
-  local x, y = figure.x, figure.y
-  local f = figure.fig
-  local d = 1
-  for i = 1, figureHeight do
-    for j = 1, figureWidth do
-      --field[x + i - 1][y + j - 1] = figure.fig[i][j]
-      if f[i][j] then
-        field[y + i - d][x + j - d] = f[i][j]
-      end
+    sndDone:play()
+    local x, y = figure.x, figure.y
+    local f = figure.fig
+    local d = 1
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            --field[x + i - 1][y + j - 1] = figure.fig[i][j]
+            if f[i][j] then
+                field[y + i - d][x + j - d] = f[i][j]
+            end
+        end
     end
-  end
 end
 
 -- return true if figure failed to ceil
 function updateFigure(figure, field)
-  local x = figure.x
-  local y = figure.y + 1
-  for i = 1, figureHeight do
-    for j = 1, figureWidth do
-      --if figure.fig[i][j] and field[x + i - 1][y + j - 1] then
-      ----fieldthen
-      --return
-      --print("intersection")
-      --end
-      if figure.fig[i][j] and y + i - 1 == fieldHeight then
-        print("Fail to ceil")
-        --mergeFigure(figure, field)
-        return true
-      end
+    local x = figure.x
+    local y = figure.y + 1
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            --if figure.fig[i][j] and field[x + i - 1][y + j - 1] then
+            ----fieldthen
+            --return
+            --print("intersection")
+            --end
+            if figure.fig[i][j] and y + i - 1 == fieldHeight then
+                print("Fail to ceil")
+                --mergeFigure(figure, field)
+                return true
+            end
+        end
     end
-  end
-  for i = 1, figureHeight do
-    for j = 1, figureWidth do
-      if (field[x + i - 1][y + j - 1] and figure.fig[i][j]) then
-        --fieldthen
-        print("intersection")
-        return true
-      end
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            if (field[x + i - 1][y + j - 1] and figure.fig[i][j]) then
+                --fieldthen
+                print("intersection")
+                return true
+            end
+        end
     end
-  end
-  figure.y = figure.y + 1
-  return false
+    figure.y = figure.y + 1
+    return false
 end
-
-local timestamp
-local latestSideMove
 
 function love.load(arg)
   --print(inspect(arg))
@@ -372,7 +375,8 @@ function love.update(dt)
 
     local sideMovePause = 0.03
 
-    local pause = love.keyboard.isDown("up") and 0.01 or 0.3
+    pause = love.keyboard.isDown("up") and 0.01 or 0.3
+
     if timestamp + pause <= time then
         timestamp = time
 
@@ -384,6 +388,36 @@ function love.update(dt)
             figure = createFigure(field)
             failed = true
         end
+    end
+
+    local touches = love.touch.getTouches()
+    local previousTouches = {}
+    for k, v in pairs(touches) do
+        local x, y = love.touch.getPosition(v)
+
+        local w, h = lg.getDimensions()
+        if y > h / 2 then
+            print("left")
+            moveFigureLeft(figure, field)
+        else
+            print("right")
+            moveFigureRight(figure, field)
+        end
+
+        print("bottomFieldY", bottomFieldY)
+        pause = bottomFieldY and x > bottomFieldY and 0.3 or 0.1
+        print("pause", pause)
+        print("x, y", x, y)
+
+
+        table.insert(drawList, function()
+            lg.setColor{0, 0.2, 0}
+            lg.circle("fill", x, y, 10)
+            lg.setColor{1, 0.2, 0, 0.5}
+            lg.circle("fill", x, y, 20)
+            lg.setColor{0, 0.2, 0.5, 0.5}
+            lg.circle("fill", x, y, 60)
+        end)
     end
 
     removeFullRows(field)
@@ -480,32 +514,17 @@ function drawScoresAndPos(startx, starty)
     y = y + lg.getFont():getHeight()
 end
 
-local drawList = {}
-
 function love.touchmoved(id, x, y, dx, dy, pressure)
-    table.insert(drawList, function()
-        lg.setColor{0, 0.2, 0}
-        lg.circle("fill", x, y, 10)
-    end)
 end
 
 function love.touchpressed(id, x, y, _, _, pressure)
     sndClick:play()
-
     if paused then
         paused = false
     end
-
-    local w, h = lg.getDimensions()
-    if y > h / 2 then
-        print("left")
-        moveFigureLeft(figure, field)
-    else
-        print("right")
-        moveFigureRight(figure, field)
-    end
 end
 
+-- оформить смену состояний игры через сопрограмму
 function game()
     isGameOver = false
 end
@@ -528,7 +547,7 @@ function love.draw()
     local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
         quadWidth) / 1
 
-    print("love.draw", startx, starty)
+    --print("love.draw", startx, starty)
     
     if gameover then
         drawGameOver(startx, starty)
