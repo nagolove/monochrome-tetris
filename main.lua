@@ -82,8 +82,9 @@ local figures = {
 function drawNextFigure()
     local nextfig = copyFigureInternal(figures[nextFigure])
     local w, h = lg.getDimensions()
-    local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
-        quadWidth) / 2
+    --local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
+        --quadWidth) / 2
+    local startx, starty = 0, 0
     starty = 0
     local gap = 1
     local cleanColor = {0, 0, 0}
@@ -503,14 +504,66 @@ function rotatePortrait()
     lg.translate(-w / 2, -h / 2)
 end
 
-function drawScoresAndPos(startx, starty)
+function drawScoresAndPos2()
+    local w, h = lg.getDimensions()
+    --local fieldWidthPx = fieldWidth * quadWidth
+    ----local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
+    ----quadWidth) / 2
+    --local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
+        --quadWidth) / 1
+
+    --local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
+        --quadWidth) / 2
+
+    --local t
+    --t = w
+    --w = h
+    --h = t
+
+    local x, y = -100, 0
+
+    print("starty", starty)
+    local angle = 3 * math.pi / 2
+
     local y = 0
     lg.setColor{0, 0.2, 1}
-    lg.print(string.format("High scores: %d", highscores), startx, y, 0)
+    local fontHeight = lg.getFont():getHeight()
+    lg.printf(string.format("High scores: %d", highscores), fontHeight, h, h, "center", angle)
+    lg.printf(string.format("High scores: %d", highscores), fontHeight * 2, h, h, "left", angle)
+    lg.printf(string.format("High scores: %d", highscores), fontHeight * 3, h, h, "right", angle)
+
+    x = x + lg.getFont():getHeight()
+    lg.print(string.format("Scores: %d", scores), x, y, angle)
+    x = x + lg.getFont():getHeight()
+    lg.print(string.format("x, y %d %d", figure.x, figure.y), x, y, angle)
+    x = x + lg.getFont():getHeight()
+
+    local rectw = 100
+    local x = (w - rectw) / 2
+    lg.rectangle("line", x, 0, w, h / 7)
+end
+
+function drawScoresAndPos()
+    local w, h = lg.getDimensions()
+    --local fieldWidthPx = fieldWidth * quadWidth
+    ----local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
+    ----quadWidth) / 2
+    --local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
+        --quadWidth) / 1
+
+    local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
+        quadWidth) / 2
+
+    print("starty", starty)
+    local angle = 3 * math.pi / 2
+
+    local y = 0
+    lg.setColor{0, 0.2, 1}
+    lg.print(string.format("High scores: %d", highscores), startx, y)
     y = y + lg.getFont():getHeight()
-    lg.print(string.format("Scores: %d", scores), startx, y, 0)
+    lg.print(string.format("Scores: %d", scores), startx, y)
     y = y + lg.getFont():getHeight()
-    lg.print(string.format("x, y %d %d", figure.x, figure.y), startx, y, 0)
+    lg.print(string.format("x, y %d %d", figure.x, figure.y), startx, y)
     y = y + lg.getFont():getHeight()
 end
 
@@ -541,12 +594,6 @@ function love.draw()
     end
 
     local w, h = lg.getDimensions()
-    local fieldWidthPx = fieldWidth * quadWidth
-    --local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
-        --quadWidth) / 2
-    local startx, starty = (w - fieldWidthPx) / 2, (h - fieldHeight *
-        quadWidth) / 1
-
     --print("love.draw", startx, starty)
     
     if gameover then
@@ -556,15 +603,17 @@ function love.draw()
     drawField(field)
     drawFigure(figure)
     drawNextFigure()
-    drawScoresAndPos(startx, starty)
-
+    --lg.rectangle("line", 0, 0, w / 3, h / 4)
     if isAndroid then
         lg.pop()
     end
+    --lg.rectangle("line", 0, 0, w / 3, h / 4)
 
     if failed then
         lb:pushi("Failed")
     end
+
+    drawScoresAndPos2()
     lb:draw()
 
     for _, v in pairs(drawList) do
