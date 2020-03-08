@@ -12,8 +12,15 @@ local scores = 0
 local field = {}
 local figure = {}
 local figureWidth, figureHeight = 4, 4
+
 local sndClick = love.audio.newSource("sfx/click.wav", "static")
 local sndDone = love.audio.newSource("sfx/done.wav", "static")
+
+local imgRArrow = lg.newImage("gfx/rarrow.png")
+local imgLArrow = lg.newImage("gfx/larrow.png")
+local imgLRotate = lg.newImage("gfx/lrotate.png")
+local imgRRotate = lg.newImage("gfx/rrotate.png")
+
 local pause = 0.1
 local drawList = {}
 local timestamp
