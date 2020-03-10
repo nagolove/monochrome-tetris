@@ -613,6 +613,11 @@ function love.draw()
     end
 
     local w, h = lg.getDimensions()
+    lg.setColor{0, 1, 0}
+    lg.circle("fill", 0, 0, 20)
+    lg.circle("fill", w, h, 20)
+
+    local w, h = lg.getDimensions()
     --print("love.draw", startx, starty)
     
     if gameover then
@@ -626,6 +631,11 @@ function love.draw()
     if isAndroid then
         lg.pop()
     end
+
+    local w, h = lg.getDimensions()
+    lg.setColor{0, 1, 0}
+    lg.circle("fill", 0, 0, 20)
+    lg.circle("fill", w, h, 20)
 
     if failed then
         lb:pushi("Failed")
