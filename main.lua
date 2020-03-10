@@ -458,26 +458,30 @@ function assertVariadic(...)
     assert(math.abs(sum - 1) < 0.01)
 end
 
-function splitv2(tbl, ...)
+function splith(tbl, ...)
     assertVariadic(...)
     assertHelper(tbl)
     local subTbls = {}
-    local num = select("#", ...)
+    local lasty = tbl.y
+    for i = 1, select("#", ...) do
+        local currenth = tbl.h * select(i, ...)
+        table.insert(subTbls, { x = tbl.x, y = lasty, w = tbl.w, h = currenth})
+        lasty = lasty + currenth
+    end
+    return unpack(subTbls)
+end
+
+function splitv(tbl, ...)
+    assertVariadic(...)
+    assertHelper(tbl)
+    local subTbls = {}
     local lastx = tbl.x
-    for i = 1, num do
+    for i = 1, select("#", ...) do
         local currentw = tbl.w * select(i, ...)
         table.insert(subTbls, { x = lastx, y = tbl.y, w = currentw, h = tbl.h})
         lastx = lastx + currentw            
     end
     return unpack(subTbls)
-end
-
-function splitv(tbl, c1, c2)
-    assert(math.abs(c1 + c2 - 1) < 0.005)
-    assertHelper(tbl)
-    local left = { x = tbl.x, y = tbl.y, w = tbl.w * c1, h = tbl.h }
-    local right = { x = left.w, y = tbl.y, w = tbl.w * c2, h = tbl.h }
-    return left, right
 end
 
 function splithByNum(tbl, piecesNum)
@@ -550,7 +554,8 @@ function love.update(dt)
     local t1, t2 = splitv(makeScreenTable(), 0.5, 0.5)
     local arr = {splitvByNum(t1, 4)}
     local arr2 = {splithByNum(arr[1], 3)}
-    local arr3 = {splitv2(t2, 0.3, 0.7)}
+    local arr3 = {splitv(t2, 0.3, 0.7)}
+    local arr4 = {splith(arr3[2], 0.1, 0.7, 0.2)}
     print("arr3", inspect(arr3))
     arr2[1] = areaGrowByPixel(arr2[1], 10)
     arr[4] = areaGrowByPixel(arr[4], 20)
@@ -560,6 +565,7 @@ function love.update(dt)
         drawHelper(arr)
         drawHelper(arr2)
         drawHelper(arr3)
+        drawHelper(arr4)
     end)
 
     lb:update(dt)
