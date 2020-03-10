@@ -434,13 +434,40 @@ function Layout:new()
     return self
 end
 
-function Layout:put(widget, align)
+function Layout:put(align)
 end
 
-function Layout:calculate()
+function makeScreenTable()
+    return {x = 0, y = 0, w = lg.getWidth(), h = lg.getHeight()}
 end
+
+function splitv(tbl, c1, c2)
+    assert(math.abs(c1 + c2 - 1) < 0.005)
+    assert(tbl.x and tbl.y and tbl.w and tbl.h, 
+        "not all fields are correct " .. inspect(tbl))
+    --print(inspect(table))
+    local left = { x = tbl.x, y = tbl.y, w = tbl.w * c1, h = tbl.h }
+    local right = { x = left.w, y = tbl.y, w = tbl.w * c2, h = tbl.h }
+    return left, right
+end
+
+function drawHelper(tbl)
+    lg.setColor{1, 0, 1}
+    lg.rectangle("line", tbl.x, tbl.y, tbl.w, tbl.h)
+    lg.setColor{1, 0, 1, 0.5}
+    lg.rectangle("line", tbl.x + 1, tbl.y + 1, tbl.w - 1, tbl.h - 1)
+end
+
+splitv({x = 0, y = 0, w = lg.getWidth(), h = lg.getHeight()}, 0.5007, 0.5007)
+splitv(makeScreenTable(), 0.5007, 0.5007)
 
 function love.update(dt)
+    local t1, t2 = splitv(makeScreenTable(), 0.5, 0.5)
+    table.insert(drawList, function()
+        drawHelper(t1)
+        drawHelper(t2)
+    end)
+
     lb:update(dt)
     local time = love.timer.getTime()
 
@@ -606,6 +633,7 @@ function rotatePortrait()
     local w, h = lg.getDimensions()
     lg.translate(w / 2, h / 2)
     lg.rotate(math.pi * 3 / 2)
+    --lg.scale(0.4, 0.4)
     lg.translate(-w / 2, -h / 2)
 end
 
@@ -648,11 +676,6 @@ function love.draw()
     end
 
     local w, h = lg.getDimensions()
-    lg.setColor{0, 1, 0}
-    lg.circle("fill", 0, 0, 20)
-    lg.circle("fill", w, h, 20)
-
-    local w, h = lg.getDimensions()
     --print("love.draw", startx, starty)
     
     if gameover then
@@ -662,15 +685,23 @@ function love.draw()
     drawField(field)
     drawFigure(figure)
     drawNextFigure()
+
+    --local w, h = lg.getDimensions()
+    --lg.setColor{0, 1, 0}
+    --lg.circle("fill", 0, 0, 20)
+    --lg.circle("fill", 70, 70, 20)
+    --lg.circle("fill", 170, 170, 20)
+    --lg.circle("fill", w, h, 20)
+    --lg.circle("fill", h, w, 20)
     
     if isAndroid then
         lg.pop()
     end
 
     local w, h = lg.getDimensions()
-    lg.setColor{0, 1, 0}
-    lg.circle("fill", 0, 0, 20)
-    lg.circle("fill", w, h, 20)
+    --lg.setColor{0, 0, 1, 0.5}
+    --lg.circle("fill", 0, 0, 20)
+    --lg.circle("fill", w, h, 20)
 
     if failed then
         lb:pushi("Failed")
