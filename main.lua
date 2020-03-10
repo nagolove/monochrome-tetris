@@ -426,6 +426,20 @@ function love.load(arg)
     addTouchRect(w / 2.16, h - zonew, w / 5, zonew, "leftup", function() end)
 end
 
+local Layout = {}
+Layout.__index = Layout
+
+function Layout:new()
+    local self = setmetatable({}, Layout)
+    return self
+end
+
+function Layout:put(widget, align)
+end
+
+function Layout:calculate()
+end
+
 function love.update(dt)
     lb:update(dt)
     local time = love.timer.getTime()
@@ -497,6 +511,20 @@ function love.update(dt)
 
     end
     previousTouches = newTouches
+
+    table.insert(drawList, function()
+        local x, y = 0, 0
+        lg.setColor{1, 1, 1, 1}
+        lg.draw(imgLArrow, x, y)
+        y = y + imgLArrow:getHeight()
+        lg.draw(imgRArrow, x, y)
+        y = y + imgRArrow:getHeight()
+        lg.draw(imgLRotate, x, y)
+        y = y + imgLRotate:getHeight()
+        lg.draw(imgRRotate, x, y)
+        --lg.circle("fill", 0, 0, 100)
+        --lg.circle("fill", 100, 100, 100)
+    end)
 
     removeFullRows(field)
 end
@@ -606,6 +634,13 @@ function game()
     isGameOver = false
 end
 
+function processDrawList()
+    for _, v in pairs(drawList) do
+        v()
+    end
+    drawList = {}
+end
+
 function love.draw()
     if isAndroid then
         lg.push()
@@ -634,11 +669,7 @@ function love.draw()
     drawScoresAndPos()
     drawTouchRects()
     lb:draw()
-
-    for _, v in pairs(drawList) do
-        v()
-    end
-    drawList = {}
+    processDrawList()
 end
 
 function writeHighScores()
