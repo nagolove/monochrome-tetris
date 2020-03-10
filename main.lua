@@ -441,21 +441,59 @@ function makeScreenTable()
     return {x = 0, y = 0, w = lg.getWidth(), h = lg.getHeight()}
 end
 
-function splitv(tbl, c1, c2)
-    assert(math.abs(c1 + c2 - 1) < 0.005)
+function assertHelper(tbl)
     assert(tbl.x and tbl.y and tbl.w and tbl.h, 
         "not all fields are correct " .. inspect(tbl))
-    --print(inspect(table))
+end
+
+function checkHelper(tbl)
+    return tbl.x and tbl.y and tbl.w and tbl.h
+end
+
+function splitv(tbl, c1, c2)
+    assert(math.abs(c1 + c2 - 1) < 0.005)
+    assertHelper(tbl)
     local left = { x = tbl.x, y = tbl.y, w = tbl.w * c1, h = tbl.h }
     local right = { x = left.w, y = tbl.y, w = tbl.w * c2, h = tbl.h }
     return left, right
 end
 
+function splitvByNum(tbl, piecesNum)
+    assertHelper(tbl)
+    local subTbls = {}
+    local prevx, w = tbl.x, tbl.w / piecesNum
+    for i = 1, piecesNum do
+        table.insert(subTbls, {x = prevx, y = tbl.y, w = w, h = tbl.h})
+        prevx = prevx + w
+    end
+    return unpack(subTbls)
+end
+
 function drawHelper(tbl)
-    lg.setColor{1, 0, 1}
-    lg.rectangle("line", tbl.x, tbl.y, tbl.w, tbl.h)
-    lg.setColor{1, 0, 1, 0.5}
-    lg.rectangle("line", tbl.x + 1, tbl.y + 1, tbl.w - 1, tbl.h - 1)
+    --assertHelper(tbl)
+    if checkHelper(tbl) then
+        lg.setColor{1, 0, 1}
+        lg.rectangle("line", tbl.x, tbl.y, tbl.w, tbl.h)
+        lg.setColor{1, 0, 1, 0.5}
+        lg.rectangle("line", tbl.x + 1, tbl.y + 1, tbl.w - 1, tbl.h - 1)
+    elseif type(tbl) == "table" then
+        for k, v in pairs(tbl) do
+            if checkHelper(v) then
+                drawHelper(v)
+            end
+        end
+    end
+end
+
+function drawHierachy(rootTbl)
+    if checkHelper(rootTbl) then
+        drawHelper(rootTbl)
+    end
+    for k, v in pairs(rootTbl) do
+        if type(v) == "table" and checkHelper(v) then
+            drawHierachy(v)
+        end
+    end
 end
 
 splitv({x = 0, y = 0, w = lg.getWidth(), h = lg.getHeight()}, 0.5007, 0.5007)
@@ -463,9 +501,11 @@ splitv(makeScreenTable(), 0.5007, 0.5007)
 
 function love.update(dt)
     local t1, t2 = splitv(makeScreenTable(), 0.5, 0.5)
+    local arr = {splitvByNum(t1, 4)}
     table.insert(drawList, function()
         drawHelper(t1)
         drawHelper(t2)
+        drawHelper(arr)
     end)
 
     lb:update(dt)
