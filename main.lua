@@ -450,12 +450,45 @@ function checkHelper(tbl)
     return tbl.x and tbl.y and tbl.w and tbl.h
 end
 
+function assertVariadic(...)
+    local sum = 0
+    for i = 1, select("#", ...) do
+        sum = sum + select(i, ...)
+    end
+    assert(math.abs(sum - 1) < 0.01)
+end
+
+function splitv2(tbl, ...)
+    assertVariadic(...)
+    assertHelper(tbl)
+    local subTbls = {}
+    local num = select("#", ...)
+    local lastx = tbl.x
+    for i = 1, num do
+        local currentw = tbl.w * select(i, ...)
+        table.insert(subTbls, { x = lastx, y = tbl.y, w = currentw, h = tbl.h})
+        lastx = lastx + currentw            
+    end
+    return unpack(subTbls)
+end
+
 function splitv(tbl, c1, c2)
     assert(math.abs(c1 + c2 - 1) < 0.005)
     assertHelper(tbl)
     local left = { x = tbl.x, y = tbl.y, w = tbl.w * c1, h = tbl.h }
     local right = { x = left.w, y = tbl.y, w = tbl.w * c2, h = tbl.h }
     return left, right
+end
+
+function splithByNum(tbl, piecesNum)
+    assertHelper(tbl)
+    local subTbls = {}
+    local prevy, h = tbl.y, tbl.h / piecesNum
+    for i = 1, piecesNum do
+        table.insert(subTbls, {x = tbl.x, y = prevy, w = tbl.w, h = h})
+        prevy = prevy + h
+    end
+    return unpack(subTbls)
 end
 
 function splitvByNum(tbl, piecesNum)
@@ -467,6 +500,20 @@ function splitvByNum(tbl, piecesNum)
         prevx = prevx + w
     end
     return unpack(subTbls)
+end
+
+--function areaGrowByPercent(tbl, delta)
+    --assertHelper(tbl)
+    --assert(type(delta) == "number")
+    --return { x = tbl.x + delta, y = tbl.y + delta, 
+        --w = tbl.w - delta * 2, h = tbl.h - delta * 2}
+--end
+
+function areaGrowByPixel(tbl, delta)
+    assertHelper(tbl)
+    assert(type(delta) == "number")
+    return { x = tbl.x + delta, y = tbl.y + delta, 
+        w = tbl.w - delta * 2, h = tbl.h - delta * 2}
 end
 
 function drawHelper(tbl)
@@ -502,10 +549,17 @@ splitv(makeScreenTable(), 0.5007, 0.5007)
 function love.update(dt)
     local t1, t2 = splitv(makeScreenTable(), 0.5, 0.5)
     local arr = {splitvByNum(t1, 4)}
+    local arr2 = {splithByNum(arr[1], 3)}
+    local arr3 = {splitv2(t2, 0.3, 0.7)}
+    print("arr3", inspect(arr3))
+    arr2[1] = areaGrowByPixel(arr2[1], 10)
+    arr[4] = areaGrowByPixel(arr[4], 20)
     table.insert(drawList, function()
         drawHelper(t1)
         drawHelper(t2)
         drawHelper(arr)
+        drawHelper(arr2)
+        drawHelper(arr3)
     end)
 
     lb:update(dt)
