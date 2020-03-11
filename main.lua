@@ -435,14 +435,17 @@ end
 
 function buildLayout()
     local scr = makeScreenTable()
-    local up, bottom = splitv(scr, 0.9, 0.1)
-    local left, center, right = splith(up, 0.2, 0.6, 0.2)
-    local _, _, _, _, leftRotate, leftMove = splitvByNum(left, 6)
-    local _, _, _, _, rightRotate, rightMove = splitvByNum(right, 6)
+    scr.up, scr.bottom = splitv(scr, 0.9, 0.1)
+    scr.left, scr.center, scr.right = splith(up, 0.2, 0.6, 0.2)
+    _, _, _, _, scr.leftRotate, scr.leftMove = splitvByNum(left, 6)
+    _, _, _, _, scr.rightRotate, scr.rightMove = splitvByNum(right, 6)
+
     table.insert(drawList, function()
-        drawHelper(scr, up, bottom, left, center, right)
-        drawHelper(leftRotate, leftMove, rightRotate, rightMove)
+        drawHelper(scr, scr.up, scr.bottom, scr.left, scr.center, scr.right)
+        drawHelper(scr.leftRotate, scr.leftMove, scr.rightRotate, scr.rightMove)
     end)
+
+    return scr
 end
 
 function love.update(dt)
