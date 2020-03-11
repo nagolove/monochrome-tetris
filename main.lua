@@ -349,19 +349,26 @@ end
 
 local touchRects = {}
 
+function addTouchRect2(tbl, name, func)
+    local t = { x = tbl.x, y = tbl.y, w = tbl.w, h = tbl.h, func = func}
+    touchRects[name] = t
+end
+
 function addTouchRect(x, y, w, h, name, func)
     local t = { x = x, y = y, w = w, h = h, func = func}
     touchRects[name] = t
 end
 
-function processTouches()
+function processTouches(touches)
     for k, v in pairs(touches) do
         local x, y = love.touch.getPosition(v)
 
         for k1, v1 in pairs(touchRects) do
             if x > v1.x and x < v1.w and y > v1.y and y < v1.h then
-                v1.func()
-                break
+                if v1.func then
+                    v1.func()
+                end
+                break -- ??
             end
         end
     end
@@ -372,6 +379,31 @@ function drawTouchRects()
     for k, v in pairs(touchRects) do
         lg.rectangle("fill", v.x, v.y, v.w, v.h)
     end
+end
+
+function buildLayout()
+    local scr = makeScreenTable()
+    scr.up, scr.bottom = splitv(scr, 0.9, 0.1)
+    scr.left, scr.center, scr.right = splith(scr.up, 0.2, 0.6, 0.2)
+    _, _, _, _, scr.leftRotate, scr.leftMove = splitvByNum(scr.left, 6)
+    _, _, _, _, scr.rightRotate, scr.rightMove = splitvByNum(scr.right, 6)
+
+    table.insert(drawList, function()
+        drawHelper(scr, scr.up, scr.bottom, scr.left, scr.center, scr.right)
+        drawHelper(scr.leftRotate, scr.leftMove, scr.rightRotate, scr.rightMove)
+    end)
+
+    return scr
+end
+
+local generalLayout = buildLayout()
+
+function drop()
+    lb:push(1, "drop!")
+end
+
+function makePause()
+    paused = not paused
 end
 
 function love.load(arg)
@@ -404,48 +436,28 @@ function love.load(arg)
     local w, h = lg.getDimensions()
     local zonew = 70
 
-    addTouchRect(3.5 / 4 * w, 0, h, w, "bottom", function() end)
-    local rectw = 2.07 / 10 * w
-    addTouchRect(w / 1.5, 0, rectw, zonew, "rightdown", function() end)
-    addTouchRect(w / 1.5, h - zonew, rectw, zonew, "leftdown", function() end)
-    addTouchRect(w / 2.16, 0, w / 5, zonew, "rightup", function() end)
-    addTouchRect(w / 2.16, h - zonew, w / 5, zonew, "leftup", function() end)
-end
+    --addTouchRect(3.5 / 4 * w, 0, h, w, "bottom", function() end)
+    --local rectw = 2.07 / 10 * w
+    --addTouchRect(w / 1.5, 0, rectw, zonew, "rightdown", function() end)
+    --addTouchRect(w / 1.5, h - zonew, rectw, zonew, "leftdown", function() end)
+    --addTouchRect(w / 2.16, 0, w / 5, zonew, "rightup", function() end)
+    --addTouchRect(w / 2.16, h - zonew, w / 5, zonew, "leftup", function() end)
 
-function layoutExample()
-    local t = areaGrowByPixel(splitv(makeScreenTable(), 1), 10)
-    local t1, t2 = splitv(t, 0.5, 0.5)
-    local arr = {splitvByNum(t1, 4)}
-    local arr2 = {splithByNum(arr[1], 3)}
-    local arr3 = {splitv(t2, 0.3, 0.7)}
-    local arr4 = {splith(arr3[2], 0.1, 0.7, 0.2)}
-    print("arr3", inspect(arr3))
-    arr2[1] = areaGrowByPixel(arr2[1], 10)
-    arr[4] = areaGrowByPixel(arr[4], 20)
-    table.insert(drawList, function()
-        drawHelper(t1)
-        drawHelper(t2)
-        drawHelper(arr)
-        drawHelper(arr2)
-        drawHelper(arr3)
-        drawHelper(arr4)
-        drawHelper(t)
+    print("generalLayout", inspect(generalLayout))
+    addTouchRect2(generalLayout.bottom, "bottom", drop)
+    addTouchRect2(generalLayout.center, "pause", makePause)
+    addTouchRect2(generalLayout.leftMove, "leftmove", function()
+        moveFigureLeft(figure, field)
     end)
-end
-
-function buildLayout()
-    local scr = makeScreenTable()
-    scr.up, scr.bottom = splitv(scr, 0.9, 0.1)
-    scr.left, scr.center, scr.right = splith(up, 0.2, 0.6, 0.2)
-    _, _, _, _, scr.leftRotate, scr.leftMove = splitvByNum(left, 6)
-    _, _, _, _, scr.rightRotate, scr.rightMove = splitvByNum(right, 6)
-
-    table.insert(drawList, function()
-        drawHelper(scr, scr.up, scr.bottom, scr.left, scr.center, scr.right)
-        drawHelper(scr.leftRotate, scr.leftMove, scr.rightRotate, scr.rightMove)
+    addTouchRect2(generalLayout.rightMove, "rightmove", function()
+        moveFigureRight(figure, field)
     end)
-
-    return scr
+    addTouchRect2(generalLayout.leftRotate, "leftrotate", function()
+        rotateFigireLeft(figure, field)
+    end)
+    addTouchRect2(generalLayout.rightRotate, "rightRotate", function()
+        rotateFigureRight(figure, field)
+    end)
 end
 
 function love.update(dt)
@@ -478,48 +490,49 @@ function love.update(dt)
     local touches = love.touch.getTouches()
     local newTouches = {}
     pause = 0.1
-    for k, v in pairs(touches) do
-        local x, y = love.touch.getPosition(v)
-        table.insert(newTouches, {x, y})
+    processTouches(touches)
+    --for k, v in pairs(touches) do
+        --local x, y = love.touch.getPosition(v)
+        --table.insert(newTouches, {x, y})
 
-        local w, h = lg.getDimensions()
-        local touchWidth = 50
-        local xcritical = w * 3 / 4
-        if not checkPreviosTouch(x, y) then
-            if y > 0 and y < touchWidth then
-                if x > xcritical then
-                    moveFigureRight(figure, field)
-                else
-                    rotateFigureRight(figure, field)
-                end
-            elseif y < h and y > h - touchWidth then
-                if x > xcritical then
-                    moveFigureLeft(figure, field)
-                else
-                    rotateFigireLeft(figure, field)
-                end
-            end
-            pause = x > 3.8 / 4 * w and 0.3 or 0.1
-        end
+        --local w, h = lg.getDimensions()
+        --local touchWidth = 50
+        --local xcritical = w * 3 / 4
+        --if not checkPreviosTouch(x, y) then
+            --if y > 0 and y < touchWidth then
+                --if x > xcritical then
+                    --moveFigureRight(figure, field)
+                --else
+                    --rotateFigureRight(figure, field)
+                --end
+            --elseif y < h and y > h - touchWidth then
+                --if x > xcritical then
+                    --moveFigureLeft(figure, field)
+                --else
+                    --rotateFigireLeft(figure, field)
+                --end
+            --end
+            --pause = x > 3.8 / 4 * w and 0.3 or 0.1
+        --end
 
-        print("bottomFieldY", bottomFieldY)
-        --pause = bottomFieldY and x > bottomFieldY and 0.3 or 0.1
+        --print("bottomFieldY", bottomFieldY)
+        ----pause = bottomFieldY and x > bottomFieldY and 0.3 or 0.1
         
 
-        print("pause", pause)
-        print("x, y", x, y)
+        --print("pause", pause)
+        --print("x, y", x, y)
 
 
-        table.insert(drawList, function()
-            lg.setColor{0, 0.2, 0}
-            lg.circle("fill", x, y, 10)
-            lg.setColor{1, 0.2, 0, 0.5}
-            lg.circle("fill", x, y, 20)
-            lg.setColor{0, 0.2, 0.5, 0.5}
-            lg.circle("fill", x, y, 60)
-        end)
+        --table.insert(drawList, function()
+            --lg.setColor{0, 0.2, 0}
+            --lg.circle("fill", x, y, 10)
+            --lg.setColor{1, 0.2, 0, 0.5}
+            --lg.circle("fill", x, y, 20)
+            --lg.setColor{0, 0.2, 0.5, 0.5}
+            --lg.circle("fill", x, y, 60)
+        --end)
 
-    end
+    --end
     previousTouches = newTouches
 
     table.insert(drawList, function()
