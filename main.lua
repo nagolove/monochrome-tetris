@@ -26,21 +26,6 @@ local drawList = {}
 local timestamp
 
 local figures = {
-  --[[
-  { 
-    {false, true, true, true, true},
-    {true, true, true, true, true},
-    {true, true, true, true, true},
-    {true, true, true, true, true},
-    {true, true, true, false, true},
-  },
-  { 
-    {true, true, true, true, true},
-    {true, true, true, true, true},
-    {true, true, true, true, true},
-    {true, true, true, true, true},
-    {true, true, true, true, true},
-  }, --]]
   { 
     {false, false, false, false},
     {false, false, false, false},
