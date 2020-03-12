@@ -17,18 +17,20 @@ local figureWidth, figureHeight = 4, 4
 local sndClick = love.audio.newSource("sfx/click.wav", "static")
 local sndDone = love.audio.newSource("sfx/done.wav", "static")
 
-local imgRArrow = lg.newImage("gfx/rarrow.png")
-local quadRAArrow = lg.newQuad(0, 0, imgRArrow:getWidth(), imgRArrow:getHeight(), imgRArrow:getWidth(), imgRArrow:getHeight())
-local imgLArrow = lg.newImage("gfx/larrow.png")
-local quadLArrow = lg.newQuad(0, 0, imgLArrow:getWidth(), imgLArrow:getHeight(), imgLArrow:getWidth(), imgLArrow:getHeight())
-local imgLRotate = lg.newImage("gfx/lrotate.png")
-local quadLRotate = lg.newQuad(0, 0, imgLRotate:getWidth(), imgLRotate:getHeight(), imgLRotate:getWidth(), imgLRotate:getHeight()) 
-local imgRRotate = lg.newImage("gfx/rrotate.png")
-local quadRRotate = lg.newQuad(0, 0, imgRRotate:getWidth(), imgRRotate:getHeight(), imgRRotate:getWidth(), imgRRotate:getHeight()) 
+--local imgRArrow = lg.newImage("gfx/rarrow.png")
+--local quadRAArrow = lg.newQuad(0, 0, imgRArrow:getWidth(), imgRArrow:getHeight(), imgRArrow:getWidth(), imgRArrow:getHeight())
+--local imgLArrow = lg.newImage("gfx/larrow.png")
+--local quadLArrow = lg.newQuad(0, 0, imgLArrow:getWidth(), imgLArrow:getHeight(), imgLArrow:getWidth(), imgLArrow:getHeight())
+--local imgLRotate = lg.newImage("gfx/lrotate.png")
+--local quadLRotate = lg.newQuad(0, 0, imgLRotate:getWidth(), imgLRotate:getHeight(), imgLRotate:getWidth(), imgLRotate:getHeight()) 
+--local imgRRotate = lg.newImage("gfx/rrotate.png")
+--local quadRRotate = lg.newQuad(0, 0, imgRRotate:getWidth(), imgRRotate:getHeight(), imgRRotate:getWidth(), imgRRotate:getHeight()) 
 
 local pause = 0.1
 local drawList = {}
 local timestamp
+
+local layout
 
 local figures = {
   { 
@@ -216,7 +218,7 @@ end
 function createFigure(field)
   local figure = { 
     fig = copyFigureInternal(figures[nextFigure]),
-    x = 1,
+    x = (fieldWidth - figureWidth) / 2 + 1,
     y = 1,
   }
   nextFigure = math.random(1, #figures)
@@ -364,76 +366,47 @@ function addTouchRect(x, y, w, h, name, func)
 end
 
 function inRect(x, y, rect)
-    return x > rect.x and x < rect.w and y > rect.y and y < rect.h
+    return x > rect.x and x < rect.x + rect.w 
+        and y > rect.y and y < rect.y + rect.h
 end
 
 function processTouches()
     local touches = love.touch.getTouches()
-    print(inspect(touchRects))
     for _, v in pairs(touches) do
         local x, y = love.touch.getPosition(v)
-
-        for k, u in pairs(touchRects) do
-            print("cycle")
-            table.insert(drawList, function()
-                lg.circle("line", x, y, 40)
-            end)
-            --if x > u.x and x < u.w and y > u.y and y < u.h then
-            if inRect(x, y, u) then
-                print("ok")
-                if u.func then
-                    u.func()
-                    break -- ??
+        print("x, y", x, y)
+        for k, u in pairs(layout) do
+            if type(u) == "table" then
+                print("cycle")
+                table.insert(drawList, function()
+                    lg.circle("line", x, y, 40)
+                end)
+                --if x > u.x and x < u.w and y > u.y and y < u.h then
+                if inRect(x, y, u) then
+                    print("in rectangle")
+                    if u.func then
+                        print("call")
+                        u.func()
+                        break -- ??
+                    end
                 end
             end
         end
     end
-    
-    --[[
-       [for k, v in pairs(touchRects) do
-       [    print("rect")
-       [    for h, u in pairs(touches) do
-       [        print("touch")
-       [        local x, y = love.touch.getPosition(u)
-       [        print("x, y", x, y)
-       [        if inRect(x, y, v) then
-       [            print("in rectangle")
-       [            if v.func then
-       [                v.func()
-       [            end
-       [        end
-       [    end
-       [end
-       ]]
 
 end
 
 function drawTouchRects()
-    lg.setColor{0.3, 0.3, 0.3, 0.3}
-    for k, v in pairs(touchRects) do
-        lg.rectangle("fill", v.x, v.y, v.w, v.h)
+    lg.setColor{0.3, 0.3, 0.3, 1}
+    for k, v in pairs(layout) do
+        if type(v) == "table" and v.x and v.y and v.w and v.h then
+            lg.rectangle("line", v.x, v.y, v.w, v.h)
+        end
     end
 end
 
-function buildLayout()
-    local scr = makeScreenTable()
-    scr.up, scr.bottom = splitv(scr, 0.9, 0.1)
-    scr.left, scr.center, scr.right = splith(scr.up, 0.2, 0.6, 0.2)
-    _, _, _, scr.leftRotate, scr.leftMove = splitvByNum(scr.left, 5)
-    _, _, _, scr.rightRotate, scr.rightMove = splitvByNum(scr.right, 5)
-
-    table.insert(drawList, function()
-        drawHelper(scr, scr.up, scr.bottom, scr.left, scr.center, scr.right)
-        drawHelper(scr.leftRotate, scr.leftMove, scr.rightRotate, scr.rightMove)
-    end)
-
-    return scr
-end
-
-local generalLayout = buildLayout()
-
 function drawButtonsImages()
-    local l = generalLayout
+    local l = layout
 
     --lg.draw(imgLArrow, l.leftMove.x, l.leftMove.y, math.pi / 2, l.leftMove.w / imgLArrow:getWidth())
     --lg.draw(imgLArrow, l.leftMove.x, l.leftMove.y, math.pi / 2, imgLArrow:getWidth() / l.leftMove.w)
@@ -464,67 +437,54 @@ function makePause()
     paused = not paused
 end
 
-function love.load(arg)
-    --print(inspect(arg))
-    --if arg[1] == "-checkFigureOnField_test" then
+function buildLayout()
+    local scr = makeScreenTable()
+    scr.up, scr.bottom = splitv(scr, 0.9, 0.1)
+    scr.left, scr.center, scr.right = splith(scr.up, 0.2, 0.6, 0.2)
+    _, _, _, scr.leftRotate, scr.leftMove = splitvByNum(scr.left, 5)
+    _, _, _, scr.rightRotate, scr.rightMove = splitvByNum(scr.right, 5)
+    return scr
+end
 
+function love.load(arg)
     if arg[#arg] == "-debug" then require "mobdebug".start() end
     math.randomseed(os.time())
     field = createField()
-    --print("field", inspect(field))
-
-    --  field[25][1] = true
-    --  field[26][1] = true
-    --  field[27][1] = true
-    --  field[28][1] = true
-    --  field[29][1] = true
-
     timestamp = love.timer.getTime()  
     nextFigure = math.random(1, #figures)
     figure = createFigure(field)
+
     print("start with", inspect(figure))
 
-    local cnt, size = love.filesystem.read("highscores.txt")
-    --if size ~= 0 then highscores = tonumber(cnt) else highscores = 0 end
-    local value = tonumber(cnt)
-    highscores = value and value or 0
-    print("cnt", cnt, "size", size)
+    local value, size = love.filesystem.read("highscores.txt")
+    highscores = tonumber(value) and value or 0
+    print("highscores", highscores, "size", size)
+
     love.keyboard.setKeyRepeat(true)
 
-    local w, h = lg.getDimensions()
-    local zonew = 70
-
-    --addTouchRect(3.5 / 4 * w, 0, h, w, "bottom", function() end)
-    --local rectw = 2.07 / 10 * w
-    --addTouchRect(w / 1.5, 0, rectw, zonew, "rightdown", function() end)
-    --addTouchRect(w / 1.5, h - zonew, rectw, zonew, "leftdown", function() end)
-    --addTouchRect(w / 2.16, 0, w / 5, zonew, "rightup", function() end)
-    --addTouchRect(w / 2.16, h - zonew, w / 5, zonew, "leftup", function() end)
-
-    print("generalLayout", inspect(generalLayout))
-    addTouchRect2(generalLayout.bottom, "bottom", drop)
-    addTouchRect2(generalLayout.center, "pause", makePause)
-    addTouchRect2(generalLayout.leftMove, "leftmove", function()
+    layout = buildLayout()
+    print("layout", inspect(layout))
+    layout.bottom.func = drop
+    layout.center.func = makePause
+    layout.leftMove.func = function()
         print("moveFigureLeft")
-        moveFigureLeft(figure, field)
-    end)
-    addTouchRect2(generalLayout.rightMove, "rightmove", function()
-        print("moveFigureRight")
         moveFigureRight(figure, field)
-    end)
-    addTouchRect2(generalLayout.leftRotate, "leftrotate", function()
+    end
+    layout.rightMove.func = function()
+        print("moveFigureRight")
+        moveFigureLeft(figure, field)
+    end
+    layout.leftRotate.func = function()
         print("rotateFigireLeft")
         rotateFigireLeft(figure, field)
-    end)
-    addTouchRect2(generalLayout.rightRotate, "rightRotate", function()
+    end
+    layout.rightRotate.func = function()
         print("rotateFigureRight")
         rotateFigureRight(figure, field)
-    end)
+    end
 end
 
 function love.update(dt)
-    buildLayout()
-
     processTouches()
     lb:update(dt)
 
@@ -693,7 +653,7 @@ function love.draw()
         lb:pushi("Failed")
     end
 
-    drawButtonsImages()
+    --drawButtonsImages()
     drawScoresAndPos()
     drawTouchRects()
     lb:draw()
