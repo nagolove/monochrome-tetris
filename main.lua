@@ -18,9 +18,13 @@ local sndClick = love.audio.newSource("sfx/click.wav", "static")
 local sndDone = love.audio.newSource("sfx/done.wav", "static")
 
 local imgRArrow = lg.newImage("gfx/rarrow.png")
+local quadRAArrow = lg.newQuad(0, 0, imgRArrow:getWidth(), imgRArrow:getHeight(), imgRArrow:getWidth(), imgRArrow:getHeight())
 local imgLArrow = lg.newImage("gfx/larrow.png")
+local quadLArrow = lg.newQuad(0, 0, imgLArrow:getWidth(), imgLArrow:getHeight(), imgLArrow:getWidth(), imgLArrow:getHeight())
 local imgLRotate = lg.newImage("gfx/lrotate.png")
+local quadLRotate = lg.newQuad(0, 0, imgLRotate:getWidth(), imgLRotate:getHeight(), imgLRotate:getWidth(), imgLRotate:getHeight()) 
 local imgRRotate = lg.newImage("gfx/rrotate.png")
+local quadRRotate = lg.newQuad(0, 0, imgRRotate:getWidth(), imgRRotate:getHeight(), imgRRotate:getWidth(), imgRRotate:getHeight()) 
 
 local pause = 0.1
 local drawList = {}
@@ -359,19 +363,49 @@ function addTouchRect(x, y, w, h, name, func)
     touchRects[name] = t
 end
 
-function processTouches(touches)
-    for k, v in pairs(touches) do
+function inRect(x, y, rect)
+    return x > rect.x and x < rect.w and y > rect.y and y < rect.h
+end
+
+function processTouches()
+    local touches = love.touch.getTouches()
+    print(inspect(touchRects))
+    for _, v in pairs(touches) do
         local x, y = love.touch.getPosition(v)
 
-        for k1, v1 in pairs(touchRects) do
-            if x > v1.x and x < v1.w and y > v1.y and y < v1.h then
-                if v1.func then
-                    v1.func()
+        for k, u in pairs(touchRects) do
+            print("cycle")
+            table.insert(drawList, function()
+                lg.circle("line", x, y, 40)
+            end)
+            --if x > u.x and x < u.w and y > u.y and y < u.h then
+            if inRect(x, y, u) then
+                print("ok")
+                if u.func then
+                    u.func()
+                    break -- ??
                 end
-                break -- ??
             end
         end
     end
+    
+    --[[
+       [for k, v in pairs(touchRects) do
+       [    print("rect")
+       [    for h, u in pairs(touches) do
+       [        print("touch")
+       [        local x, y = love.touch.getPosition(u)
+       [        print("x, y", x, y)
+       [        if inRect(x, y, v) then
+       [            print("in rectangle")
+       [            if v.func then
+       [                v.func()
+       [            end
+       [        end
+       [    end
+       [end
+       ]]
+
 end
 
 function drawTouchRects()
@@ -385,8 +419,8 @@ function buildLayout()
     local scr = makeScreenTable()
     scr.up, scr.bottom = splitv(scr, 0.9, 0.1)
     scr.left, scr.center, scr.right = splith(scr.up, 0.2, 0.6, 0.2)
-    _, _, _, _, scr.leftRotate, scr.leftMove = splitvByNum(scr.left, 6)
-    _, _, _, _, scr.rightRotate, scr.rightMove = splitvByNum(scr.right, 6)
+    _, _, _, scr.leftRotate, scr.leftMove = splitvByNum(scr.left, 5)
+    _, _, _, scr.rightRotate, scr.rightMove = splitvByNum(scr.right, 5)
 
     table.insert(drawList, function()
         drawHelper(scr, scr.up, scr.bottom, scr.left, scr.center, scr.right)
@@ -398,11 +432,35 @@ end
 
 local generalLayout = buildLayout()
 
+function drawButtonsImages()
+    local l = generalLayout
+
+    --lg.draw(imgLArrow, l.leftMove.x, l.leftMove.y, math.pi / 2, l.leftMove.w / imgLArrow:getWidth())
+    --lg.draw(imgLArrow, l.leftMove.x, l.leftMove.y, math.pi / 2, imgLArrow:getWidth() / l.leftMove.w)
+    --
+    lg.draw(imgLArrow, l.leftMove.x, l.leftMove.y, 0, imgLArrow:getWidth() / l.leftMove.w,
+        imgLArrow:getHeight() / l.leftMove.h)
+    --lg.draw(imgLArrow, l.leftMove.x, l.leftMove.y, 0, imgLArrow:getWidth() / l.leftMove.w,
+        --l.leftMove.h / imgLArrow:getHeight() )
+
+    lg.setColor{1, 1, 1, 0.3}
+    lg.rectangle("fill", l.leftMove.x, l.leftMove.y, imgLArrow:getWidth(),
+        imgLArrow:getHeight())
+
+    lg.draw(imgRArrow, l.rightMove.x, l.rightMove.y, 0, imgRArrow:getWidth() / l.rightMove.w, 1)
+
+    lg.setColor{1, 1, 1, 0.3}
+    lg.rectangle("fill", l.rightMove.x, l.rightMove.y, imgRArrow:getWidth(),
+        imgRArrow:getHeight())
+end
+
 function drop()
     lb:push(1, "drop!")
+    print("drop")
 end
 
 function makePause()
+    print("makePause")
     paused = not paused
 end
 
@@ -447,15 +505,19 @@ function love.load(arg)
     addTouchRect2(generalLayout.bottom, "bottom", drop)
     addTouchRect2(generalLayout.center, "pause", makePause)
     addTouchRect2(generalLayout.leftMove, "leftmove", function()
+        print("moveFigureLeft")
         moveFigureLeft(figure, field)
     end)
     addTouchRect2(generalLayout.rightMove, "rightmove", function()
+        print("moveFigureRight")
         moveFigureRight(figure, field)
     end)
     addTouchRect2(generalLayout.leftRotate, "leftrotate", function()
+        print("rotateFigireLeft")
         rotateFigireLeft(figure, field)
     end)
     addTouchRect2(generalLayout.rightRotate, "rightRotate", function()
+        print("rotateFigureRight")
         rotateFigureRight(figure, field)
     end)
 end
@@ -463,7 +525,9 @@ end
 function love.update(dt)
     buildLayout()
 
+    processTouches()
     lb:update(dt)
+
     local time = love.timer.getTime()
 
     if paused then
@@ -486,68 +550,6 @@ function love.update(dt)
             failed = true
         end
     end
-
-    local touches = love.touch.getTouches()
-    local newTouches = {}
-    pause = 0.1
-    processTouches(touches)
-    --for k, v in pairs(touches) do
-        --local x, y = love.touch.getPosition(v)
-        --table.insert(newTouches, {x, y})
-
-        --local w, h = lg.getDimensions()
-        --local touchWidth = 50
-        --local xcritical = w * 3 / 4
-        --if not checkPreviosTouch(x, y) then
-            --if y > 0 and y < touchWidth then
-                --if x > xcritical then
-                    --moveFigureRight(figure, field)
-                --else
-                    --rotateFigureRight(figure, field)
-                --end
-            --elseif y < h and y > h - touchWidth then
-                --if x > xcritical then
-                    --moveFigureLeft(figure, field)
-                --else
-                    --rotateFigireLeft(figure, field)
-                --end
-            --end
-            --pause = x > 3.8 / 4 * w and 0.3 or 0.1
-        --end
-
-        --print("bottomFieldY", bottomFieldY)
-        ----pause = bottomFieldY and x > bottomFieldY and 0.3 or 0.1
-        
-
-        --print("pause", pause)
-        --print("x, y", x, y)
-
-
-        --table.insert(drawList, function()
-            --lg.setColor{0, 0.2, 0}
-            --lg.circle("fill", x, y, 10)
-            --lg.setColor{1, 0.2, 0, 0.5}
-            --lg.circle("fill", x, y, 20)
-            --lg.setColor{0, 0.2, 0.5, 0.5}
-            --lg.circle("fill", x, y, 60)
-        --end)
-
-    --end
-    previousTouches = newTouches
-
-    table.insert(drawList, function()
-        local x, y = 0, 0
-        lg.setColor{1, 1, 1, 1}
-        lg.draw(imgLArrow, x, y)
-        y = y + imgLArrow:getHeight()
-        lg.draw(imgRArrow, x, y)
-        y = y + imgRArrow:getHeight()
-        lg.draw(imgLRotate, x, y)
-        y = y + imgLRotate:getHeight()
-        lg.draw(imgRRotate, x, y)
-        --lg.circle("fill", 0, 0, 100)
-        --lg.circle("fill", 100, 100, 100)
-    end)
 
     removeFullRows(field)
 end
@@ -648,9 +650,9 @@ end
 
 function love.touchpressed(id, x, y, _, _, pressure)
     sndClick:play()
-    if paused then
-        paused = false
-    end
+    --if paused then
+        --paused = false
+    --end
 end
 
 -- оформить смену состояний игры через сопрограмму
@@ -672,7 +674,6 @@ function love.draw()
     end
 
     local w, h = lg.getDimensions()
-    --print("love.draw", startx, starty)
     
     if gameover then
         drawGameOver(startx, starty)
@@ -681,28 +682,18 @@ function love.draw()
     drawField(field)
     drawFigure(figure)
     drawNextFigure()
-
-    --local w, h = lg.getDimensions()
-    --lg.setColor{0, 1, 0}
-    --lg.circle("fill", 0, 0, 20)
-    --lg.circle("fill", 70, 70, 20)
-    --lg.circle("fill", 170, 170, 20)
-    --lg.circle("fill", w, h, 20)
-    --lg.circle("fill", h, w, 20)
     
     if isAndroid then
         lg.pop()
     end
 
     local w, h = lg.getDimensions()
-    --lg.setColor{0, 0, 1, 0.5}
-    --lg.circle("fill", 0, 0, 20)
-    --lg.circle("fill", w, h, 20)
 
     if failed then
         lb:pushi("Failed")
     end
 
+    drawButtonsImages()
     drawScoresAndPos()
     drawTouchRects()
     lb:draw()
