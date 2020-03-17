@@ -246,54 +246,35 @@ function copyFigureFull(src)
     return dst
 end
 
-function rotateFigireLeft(figure)
-    local new = { x = figure.x, y = figure.y, fig = {}}
-    local f = new.fig
+function rotateCheck(figure)
     for i = 1, figureHeight do
-        local row = {}
         for j = 1, figureWidth do
-            row[#row + 1] = false
-        end
-        f[#f + 1] = row
-    end
-    if checkFigureOnField(new, field) then
-        --    print("new", inspect(new))
-        --    print("figure", inspect(figure))
-        for i = 1, figureHeight do
-            for j = 1, figureWidth do
-                f[figureHeight - j + 1][i] = figure.fig[i][j]
+            if figure.fig[i][j] then
+                if figure.x + j - 1 >= fieldWidth or figure.x + j - 1 < 1 then
+                    print("ret")
+                    return false
+                end
             end
         end
-        figure.fig = f
-    else
-        print("no")
+    end
+    return true
+end
+
+function rotateFigireLeft(figure)
+    local copy = copyFigureFull(figure)
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            copy.fig[figureHeight - j + 1][i] = figure.fig[i][j]
+        end
+    end
+
+    if rotateCheck(copy) then
+        figure.fig = copy.fig
     end
 end
 
 -- некорректно работает поворот вправо
 function rotateFigureRight(figure)
---[[
-   [    local new = {}
-   [    for i = 1, figureHeight do
-   [        local row = {}
-   [        for j = 1, figureWidth do
-   [            row[#row + 1] = false
-   [        end
-   [        new[#new + 1] = row
-   [    end
-   [    print("new", inspect(new))
-   [    print("figure", inspect(figure))
-   [    for i = 1, figureHeight do
-   [        for j = 1, figureWidth do
-   [            new[j][figureHeight - i + 1] = figure.fig[i][j]
-   [        end
-   [    end
-   [    if checkFigureOnField(new, field) then
-   [        figure.fig = new
-   [    end
-   [
-   ]]
-
     local copy = copyFigureFull(figure)
     for i = 1, figureHeight do
         for j = 1, figureWidth do
@@ -301,21 +282,9 @@ function rotateFigureRight(figure)
         end
     end
 
-    for i = 1, figureHeight do
-        for j = 1, figureWidth do
-            if copy.fig[i][j] then
-                if copy.x + j - 1 >= fieldWidth  then
-                    print("ret")
-                    return
-                end
-            end
-        end
+    if rotateCheck(copy) then
+        figure.fig = copy.fig
     end
-
-    figure.fig = copy.fig
-    --if checkFigureOnField(copy, field) then
-        --figure.fig = copy.fig
-    --end
 end
 
 function mergeFigure(figure, field)
@@ -540,35 +509,39 @@ end
 
 -- возвращает true если фигуру можно поместить в данную позицию игрового поля.
 function checkFigureOnField(figure, field)
-  local x, y = figure.x, figure.y
-  local f = figure.fig
-  for i = 1, figureHeight do
-    for j = 1, figureWidth do
-      -- ограничение передвижения фигуры по ширине поля
-      if f[i][j] and ((j + x - 1) < 1) or ((j + x - 1) > fieldWidth) then
-        --return false
-      end
-      if f[i][j] and y + i - 2 == fieldHeight then
-        print("Fail to ceil")
-        --mergeFigure(figure, field)
-        return false
-      end
-      -- collision figure with field
-      if f[i][j] and field[i + y - 1][j + x - 1] then
-        return false
-      end
+    local x, y = figure.x, figure.y
+    local f = figure.fig
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            -- ограничение передвижения фигуры по ширине поля
+            if f[i][j] and ((j + x - 1) < 1) or ((j + x - 1) > fieldWidth) then
+                --return false
+            end
+            if f[i][j] and y + i - 2 == fieldHeight then
+                print("Fail to ceil")
+                --mergeFigure(figure, field)
+                return false
+            end
+            -- collision figure with field
+            if f[i][j] and field[i + y - 1][j + x - 1] then
+                return false
+            end
+        end
     end
-  end
-  for i = 1, figureHeight do
-    for j = 1, figureWidth do
-      -- ограничение передвижения фигуры по ширине поля
-      --if f[i][j] and ((j + x - 1) < 1) or ((j + x - 2) > fieldWidth) then
-      if f[i][j] and j + x - 1 > fieldWidth then
-        return false
-      end
+
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            -- ограничение передвижения фигуры по ширине поля
+            if f[i][j] then
+                if (j + x - 1) < 1 or (j + x - 1) > fieldWidth then
+                    --if f[i][j] and j + x - 1 > fieldWidth then
+                    return false
+                end
+            end
+        end
     end
-  end
-  return true
+
+    return true
 end
 
 function moveFigureLeft(figure, field)
