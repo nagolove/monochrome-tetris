@@ -225,6 +225,27 @@ function createFigure(field)
   return figure
 end
 
+function copyFigureInternal(src)
+    dst = {}
+    for i = 1, figureHeight do
+        local row = {}
+        for j = 1, figureWidth do
+            --print("src", src[i][j])
+            row[#row + 1] = src[i][j]
+        end
+        --print("row", inspect(row))
+        dst[#dst + 1] = row
+    end
+    return dst
+end
+
+function copyFigureFull(src)
+    local dst = {}
+    dst.fig = copyFigureInternal(src.fig)
+    dst.x, dst.y = src.x, src.y
+    return dst
+end
+
 function rotateFigireLeft(figure)
     local new = { x = figure.x, y = figure.y, fig = {}}
     local f = new.fig
@@ -251,47 +272,50 @@ end
 
 -- некорректно работает поворот вправо
 function rotateFigureRight(figure)
-    local new = {}
-    for i = 1, figureHeight do
-        local row = {}
-        for j = 1, figureWidth do
-            row[#row + 1] = false
-        end
-        new[#new + 1] = row
-    end
-    print("new", inspect(new))
-    print("figure", inspect(figure))
-    for i = 1, figureHeight do
-        for j = 1, figureWidth do
-            new[j][figureHeight - i + 1] = figure.fig[i][j]
-        end
-    end
-    figure.fig = new
-end
+--[[
+   [    local new = {}
+   [    for i = 1, figureHeight do
+   [        local row = {}
+   [        for j = 1, figureWidth do
+   [            row[#row + 1] = false
+   [        end
+   [        new[#new + 1] = row
+   [    end
+   [    print("new", inspect(new))
+   [    print("figure", inspect(figure))
+   [    for i = 1, figureHeight do
+   [        for j = 1, figureWidth do
+   [            new[j][figureHeight - i + 1] = figure.fig[i][j]
+   [        end
+   [    end
+   [    if checkFigureOnField(new, field) then
+   [        figure.fig = new
+   [    end
+   [
+   ]]
 
-function copyFigureInternal(src)
-    dst = {}
+    local copy = copyFigureFull(figure)
     for i = 1, figureHeight do
-        local row = {}
         for j = 1, figureWidth do
-            --print("src", src[i][j])
-            row[#row + 1] = src[i][j]
+            copy.fig[j][figureHeight - i + 1] = figure.fig[i][j]
         end
-        --print("row", inspect(row))
-        dst[#dst + 1] = row
     end
-    return dst
-end
 
-function setupFigure(figure)
-    figure = nil
     for i = 1, figureHeight do
-        local row = {}
         for j = 1, figureWidth do
-            row[#row + 1] = false
+            if copy.fig[i][j] then
+                if copy.x + j - 1 >= fieldWidth  then
+                    print("ret")
+                    return
+                end
+            end
         end
-        figure[#figure + 1] = row
     end
+
+    figure.fig = copy.fig
+    --if checkFigureOnField(copy, field) then
+        --figure.fig = copy.fig
+    --end
 end
 
 function mergeFigure(figure, field)
@@ -522,7 +546,7 @@ function checkFigureOnField(figure, field)
     for j = 1, figureWidth do
       -- ограничение передвижения фигуры по ширине поля
       if f[i][j] and ((j + x - 1) < 1) or ((j + x - 1) > fieldWidth) then
---        return false
+        --return false
       end
       if f[i][j] and y + i - 2 == fieldHeight then
         print("Fail to ceil")
@@ -538,7 +562,8 @@ function checkFigureOnField(figure, field)
   for i = 1, figureHeight do
     for j = 1, figureWidth do
       -- ограничение передвижения фигуры по ширине поля
-      if f[i][j] and ((j + x - 1) < 1) or ((j + x - 2) > fieldWidth) then
+      --if f[i][j] and ((j + x - 1) < 1) or ((j + x - 2) > fieldWidth) then
+      if f[i][j] and j + x - 1 > fieldWidth then
         return false
       end
     end
