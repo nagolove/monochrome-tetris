@@ -4,7 +4,7 @@ print("isAndroid", isAndroid)
 
 local lb = require "kons".new()
 local inspect = require "inspect"
-local layout = require "touchgui.layout"
+require "touchgui.layout"
 local fieldWidth, fieldHeight = 20, 50
 local lg = love.graphics
 local quadWidth = 10
@@ -117,7 +117,7 @@ function drawField(field)
     lg.setColor{1, 1, 1}
     local w, h = lg.getDimensions()
     local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
-    quadWidth) / 2
+        quadWidth) / 2
     local gap = 1
     local cleanColor = {0, 0, 0}
     local filledColor = {1, 1, 1}
@@ -205,6 +205,7 @@ function removeFullRows(field)
                 end
             end
             scores = scores + fieldWidth
+            print(type(scores), type(highscores))
             if scores > highscores then
                 highscores = scores
                 writeHighScores()
@@ -302,67 +303,35 @@ function mergeFigure(figure, field)
     end
 end
 
--- return true if figure failed to ceil
-function updateFigure(figure, field)
-    local x = figure.x
-    local y = figure.y + 1
-    for i = 1, figureHeight do
-        for j = 1, figureWidth do
-            --if figure.fig[i][j] and field[x + i - 1][y + j - 1] then
-            ----fieldthen
-            --return
-            --print("intersection")
-            --end
-            if figure.fig[i][j] and y + i - 1 == fieldHeight then
-                print("Fail to ceil")
-                --mergeFigure(figure, field)
-                return true
-            end
-        end
-    end
-    for i = 1, figureHeight do
-        for j = 1, figureWidth do
-            if (field[x + i - 1][y + j - 1] and figure.fig[i][j]) then
-                --fieldthen
-                print("intersection")
-                return true
-            end
-        end
-    end
-    figure.y = figure.y + 1
-    return false
-end
-
 local failed = false
-
-local previousTouches = {}
-
-function checkPreviosTouch(x, y)
-    for k, v in pairs(previousTouches) do
-        if v[1] == x and v[2] == y then
-            return true
-        end
-    end
-    return false
-end
-
-local touchRects = {}
-
-function addTouchRect2(tbl, name, func)
-    local t = { x = tbl.x, y = tbl.y, w = tbl.w, h = tbl.h, func = func}
-    touchRects[name] = t
-end
-
-function addTouchRect(x, y, w, h, name, func)
-    local t = { x = x, y = y, w = w, h = h, func = func}
-    touchRects[name] = t
-end
 
 function inRect(x, y, rect)
     return x > rect.x and x < rect.x + rect.w 
         and y > rect.y and y < rect.y + rect.h
 end
 
+function touchPress(layoutArea)
+    if layoutArea.timestamp then
+        local now = love.timer.getTime()
+        local diff = now - layoutArea.timestamp
+        if diff >= 0.25 then
+            layoutArea.timestamp = now
+            layoutArea.func()
+        end
+    else
+        layoutArea.timestamp = love.timer.getTime()
+        layoutArea.func()
+    end
+end
+
+--[[
+-- Если палец касается экрана в новом месте, где раньше не касался, то
+-- генерировать событие. Если палец остается на том же месте, прижатый к
+-- экрану, но через определенное время начать генерировать события с
+-- определенной переодичностью. Если палец не отрываясь перемещается по области
+-- экрана(по области кнопки), через определенные промежутки времени
+-- генерировать события.
+--]]
 function processTouches()
     local touches = love.touch.getTouches()
     for _, v in pairs(touches) do
@@ -370,23 +339,16 @@ function processTouches()
         print("x, y", x, y)
         for k, u in pairs(layout) do
             if type(u) == "table" then
-                print("cycle")
+                --print("cycle")
                 table.insert(drawList, function()
                     lg.circle("line", x, y, 40)
                 end)
-                --if x > u.x and x < u.w and y > u.y and y < u.h then
-                if inRect(x, y, u) then
-                    print("in rectangle")
-                    if u.func then
-                        print("call")
-                        u.func()
-                        break -- ??
-                    end
+                if inRect(x, y, u) and u.func then
+                    touchPress(u)
                 end
             end
         end
     end
-
 end
 
 function drawTouchRects()
@@ -448,9 +410,20 @@ function love.load(arg)
     figure = createFigure(field)
 
     print("start with", inspect(figure))
+    field[1][1] = true
+    field[1][2] = true
+    field[1][3] = true
+    field[1][4] = true
+    field[1][5] = true
+
+    field[2][1] = true
+    field[3][1] = true
+    field[4][1] = true
+    field[5][1] = true
 
     local value, size = love.filesystem.read("highscores.txt")
-    highscores = tonumber(value) and value or 0
+    value = tonumber(value)
+    highscores = value and value or 0
     print("highscores", highscores, "size", size)
 
     love.keyboard.setKeyRepeat(true)
@@ -477,6 +450,19 @@ function love.load(arg)
     end
 end
 
+function checkFigureOnFloor(figure, field)
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            if figure.fig[i][j] then
+                if figure.y + i - 2 == fieldHeight then
+                    return false
+                end
+            end
+        end
+    end
+    return true
+end
+
 function love.update(dt)
     processTouches()
     lb:update(dt)
@@ -496,7 +482,7 @@ function love.update(dt)
         timestamp = time
         figure.y = figure.y + 1
         failed = false
-        if not checkFigureOnField(figure, field) then
+        if not checkFigureOnFloor(figure, field) or not checkFigureOnField(figure, field) then
             figure.y = figure.y - 1
             mergeFigure(figure, field)
             figure = createFigure(field)
@@ -541,6 +527,30 @@ function checkFigureOnField(figure, field)
         end
     end
 
+    return true
+end
+
+-- возвращает true если фигуру можно поместить в данную позицию игрового поля.
+function checkFigureOnField(figure, field)
+    if not __ONCE__ then
+        print("figure", inspect(figure))
+        print("figureWidth, figureHeight", figureWidth, figureHeight)
+        print("field", inspect(field))
+        __ONCE__ = true
+    end
+    -- field[y][x]
+    local x, y = figure.x, figure.y
+    local f = figure.fig
+    for i = 0, figureHeight - 1 do
+        for j = 0, figureWidth - 1 do
+            if y + i <= fieldHeight and x + j <= fieldWidth then
+                local v = field[y + i][x + j]
+                if v and f[i + 1][j + 1] then
+                    return false
+                end
+            end
+        end
+    end
     return true
 end
 
