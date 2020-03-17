@@ -116,11 +116,12 @@ end
 function drawField(field)
     lg.setColor{1, 1, 1}
     local w, h = lg.getDimensions()
-    local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
-        quadWidth) / 2
+    local startx, starty = (w - (fieldWidth + 2) * quadWidth) / 2, 
+        (h - (fieldHeight + 1) * quadWidth) / 2
     local gap = 1
     local cleanColor = {0, 0, 0}
     local filledColor = {1, 1, 1}
+    local dbgColor = {0, 1, 0}
     local d = 1
 
     for i = 1, fieldHeight do
@@ -130,16 +131,30 @@ function drawField(field)
         lg.line(startx + i * quadWidth, starty, startx + i * quadWidth, starty + fieldHeight * quadWidth)
     end
 
-    for i = 1, fieldHeight do
-        for j = 1, fieldWidth do
+    for i = 1, #field do
+        local row = field[i]
+        for j = 1, #row do
+            if field[i][j] then
+                lg.setColor(dbgColor)
+            else
+                lg.setColor(cleanColor)
+            end
+            lg.rectangle("fill", startx + (j - d) * quadWidth + gap, 
+                starty + (i - d) * quadWidth + gap, quadWidth - gap, 
+                quadWidth - gap)
+        end
+    end
+
+    for i = 2, fieldHeight do
+        for j = 2, fieldWidth do
             if field[i][j] then
                 lg.setColor(filledColor)
             else
                 lg.setColor(cleanColor)
             end
             lg.rectangle("fill", startx + (j - d) * quadWidth + gap, 
-            starty + (i - d) * quadWidth + gap, quadWidth - gap, 
-            quadWidth - gap)
+                starty + (i - d) * quadWidth + gap, quadWidth - gap, 
+                quadWidth - gap)
         end
     end
 
@@ -179,10 +194,16 @@ end
 
 function createField()
     field = {}
-    for j = 1, fieldHeight do
+    for j = 1, fieldHeight + 1 do
         local row = {}
-        for i = 1, fieldWidth do
-            row[#row + 1] = false
+        for i = 1, fieldWidth + 2 do
+            if i == 1 or i == fieldWidth + 2 then
+                row[#row + 1] = true
+            elseif j == fieldHeight + 1 then
+                row[#row + 1] = true
+            else
+                row[#row + 1] = false
+            end
         end
         field[#field + 1] = row
     end
