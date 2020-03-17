@@ -116,12 +116,11 @@ end
 function drawField(field)
     lg.setColor{1, 1, 1}
     local w, h = lg.getDimensions()
-    local startx, starty = (w - (fieldWidth + 2) * quadWidth) / 2, 
-        (h - (fieldHeight + 1) * quadWidth) / 2
+    local startx, starty = (w - fieldWidth * quadWidth) / 2, (h - fieldHeight *
+        quadWidth) / 2
     local gap = 1
     local cleanColor = {0, 0, 0}
     local filledColor = {1, 1, 1}
-    local dbgColor = {0, 1, 0}
     local d = 1
 
     for i = 1, fieldHeight do
@@ -131,22 +130,8 @@ function drawField(field)
         lg.line(startx + i * quadWidth, starty, startx + i * quadWidth, starty + fieldHeight * quadWidth)
     end
 
-    for i = 1, #field do
-        local row = field[i]
-        for j = 1, #row do
-            if field[i][j] then
-                lg.setColor(dbgColor)
-            else
-                lg.setColor(cleanColor)
-            end
-            lg.rectangle("fill", startx + (j - d) * quadWidth + gap, 
-                starty + (i - d) * quadWidth + gap, quadWidth - gap, 
-                quadWidth - gap)
-        end
-    end
-
-    for i = 2, fieldHeight do
-        for j = 2, fieldWidth do
+    for i = 1, fieldHeight do
+        for j = 1, fieldWidth do
             if field[i][j] then
                 lg.setColor(filledColor)
             else
@@ -194,16 +179,10 @@ end
 
 function createField()
     field = {}
-    for j = 1, fieldHeight + 1 do
+    for j = 1, fieldHeight do
         local row = {}
-        for i = 1, fieldWidth + 2 do
-            if i == 1 or i == fieldWidth + 2 then
-                row[#row + 1] = true
-            elseif j == fieldHeight + 1 then
-                row[#row + 1] = true
-            else
-                row[#row + 1] = false
-            end
+        for i = 1, fieldWidth do
+            row[#row + 1] = false
         end
         field[#field + 1] = row
     end
@@ -247,50 +226,6 @@ function createFigure(field)
   return figure
 end
 
-function rotateFigireLeft(figure)
-    local new = { x = figure.x, y = figure.y, fig = {}}
-    local f = new.fig
-    for i = 1, figureHeight do
-        local row = {}
-        for j = 1, figureWidth do
-            row[#row + 1] = false
-        end
-        f[#f + 1] = row
-    end
-    if checkFigureOnField(new, field) then
-        --    print("new", inspect(new))
-        --    print("figure", inspect(figure))
-        for i = 1, figureHeight do
-            for j = 1, figureWidth do
-                f[figureHeight - j + 1][i] = figure.fig[i][j]
-            end
-        end
-        figure.fig = f
-    else
-        print("no")
-    end
-end
-
--- некорректно работает поворот вправо
-function rotateFigureRight(figure)
-    local new = {}
-    for i = 1, figureHeight do
-        local row = {}
-        for j = 1, figureWidth do
-            row[#row + 1] = false
-        end
-        new[#new + 1] = row
-    end
-    print("new", inspect(new))
-    print("figure", inspect(figure))
-    for i = 1, figureHeight do
-        for j = 1, figureWidth do
-            new[j][figureHeight - i + 1] = figure.fig[i][j]
-        end
-    end
-    figure.fig = new
-end
-
 function copyFigureInternal(src)
     dst = {}
     for i = 1, figureHeight do
@@ -305,14 +240,51 @@ function copyFigureInternal(src)
     return dst
 end
 
-function setupFigure(figure)
-    figure = nil
+function copyFigureFull(src)
+    local dst = {}
+    dst.fig = copyFigureInternal(src.fig)
+    dst.x, dst.y = src.x, src.y
+    return dst
+end
+
+function rotateCheck(figure)
     for i = 1, figureHeight do
-        local row = {}
         for j = 1, figureWidth do
-            row[#row + 1] = false
+            if figure.fig[i][j] then
+                if figure.x + j - 1 >= fieldWidth or figure.x + j - 1 < 1 then
+                    print("ret")
+                    return false
+                end
+            end
         end
-        figure[#figure + 1] = row
+    end
+    return true
+end
+
+function rotateFigireLeft(figure)
+    local copy = copyFigureFull(figure)
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            copy.fig[figureHeight - j + 1][i] = figure.fig[i][j]
+        end
+    end
+
+    if rotateCheck(copy) then
+        figure.fig = copy.fig
+    end
+end
+
+-- некорректно работает поворот вправо
+function rotateFigureRight(figure)
+    local copy = copyFigureFull(figure)
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            copy.fig[j][figureHeight - i + 1] = figure.fig[i][j]
+        end
+    end
+
+    if rotateCheck(copy) then
+        figure.fig = copy.fig
     end
 end
 
@@ -331,49 +303,7 @@ function mergeFigure(figure, field)
     end
 end
 
--- return true if figure failed to ceil
-function updateFigure(figure, field)
-    local x = figure.x
-    local y = figure.y + 1
-    for i = 1, figureHeight do
-        for j = 1, figureWidth do
-            --if figure.fig[i][j] and field[x + i - 1][y + j - 1] then
-            ----fieldthen
-            --return
-            --print("intersection")
-            --end
-            if figure.fig[i][j] and y + i - 1 == fieldHeight then
-                print("Fail to ceil")
-                --mergeFigure(figure, field)
-                return true
-            end
-        end
-    end
-    for i = 1, figureHeight do
-        for j = 1, figureWidth do
-            if (field[x + i - 1][y + j - 1] and figure.fig[i][j]) then
-                --fieldthen
-                print("intersection")
-                return true
-            end
-        end
-    end
-    figure.y = figure.y + 1
-    return false
-end
-
 local failed = false
-
-local previousTouches = {}
-
-function checkPreviosTouch(x, y)
-    for k, v in pairs(previousTouches) do
-        if v[1] == x and v[2] == y then
-            return true
-        end
-    end
-    return false
-end
 
 function inRect(x, y, rect)
     return x > rect.x and x < rect.x + rect.w 
@@ -393,6 +323,7 @@ function touchPress(layoutArea)
         layoutArea.func()
     end
 end
+
 --[[
 -- Если палец касается экрана в новом месте, где раньше не касался, то
 -- генерировать событие. Если палец остается на том же месте, прижатый к
@@ -519,6 +450,19 @@ function love.load(arg)
     end
 end
 
+function checkFigureOnFloor(figure, field)
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            if figure.fig[i][j] then
+                if figure.y + i - 2 == fieldHeight then
+                    return false
+                end
+            end
+        end
+    end
+    return true
+end
+
 function love.update(dt)
     processTouches()
     lb:update(dt)
@@ -538,7 +482,7 @@ function love.update(dt)
         timestamp = time
         figure.y = figure.y + 1
         failed = false
-        if not checkFigureOnField(figure, field) then
+        if not checkFigureOnFloor(figure, field) or not checkFigureOnField(figure, field) then
             figure.y = figure.y - 1
             mergeFigure(figure, field)
             figure = createFigure(field)
@@ -549,35 +493,65 @@ function love.update(dt)
     removeFullRows(field)
 end
 
-function checkFigureOnField_orig(figure, field)
-  local x, y = figure.x, figure.y
-  local f = figure.fig
-  for i = 1, figureHeight do
-    for j = 1, figureWidth do
-      -- ограничение передвижения фигуры по ширине поля
-      if f[i][j] and ((j + x - 1) < 1) or ((j + x - 1) > fieldWidth) then
---        return false
-      end
-      if f[i][j] and y + i - 2 == fieldHeight then
-        print("Fail to ceil")
-        --mergeFigure(figure, field)
-        return false
-      end
-      -- collision figure with field
-      if f[i][j] and field[i + y - 1][j + x - 1] then
-        return false
-      end
+-- возвращает true если фигуру можно поместить в данную позицию игрового поля.
+function checkFigureOnField(figure, field)
+    local x, y = figure.x, figure.y
+    local f = figure.fig
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            -- ограничение передвижения фигуры по ширине поля
+            if f[i][j] and ((j + x - 1) < 1) or ((j + x - 1) > fieldWidth) then
+                --return false
+            end
+            if f[i][j] and y + i - 2 == fieldHeight then
+                print("Fail to ceil")
+                --mergeFigure(figure, field)
+                return false
+            end
+            -- collision figure with field
+            if f[i][j] and field[i + y - 1][j + x - 1] then
+                return false
+            end
+        end
     end
-  end
-  for i = 1, figureHeight do
-    for j = 1, figureWidth do
-      -- ограничение передвижения фигуры по ширине поля
-      if f[i][j] and ((j + x - 1) < 1) or ((j + x - 2) > fieldWidth) then
-        return false
-      end
+
+    for i = 1, figureHeight do
+        for j = 1, figureWidth do
+            -- ограничение передвижения фигуры по ширине поля
+            if f[i][j] then
+                if (j + x - 1) < 1 or (j + x - 1) > fieldWidth then
+                    --if f[i][j] and j + x - 1 > fieldWidth then
+                    return false
+                end
+            end
+        end
     end
-  end
-  return true
+
+    return true
+end
+
+-- возвращает true если фигуру можно поместить в данную позицию игрового поля.
+function checkFigureOnField(figure, field)
+    if not __ONCE__ then
+        print("figure", inspect(figure))
+        print("figureWidth, figureHeight", figureWidth, figureHeight)
+        print("field", inspect(field))
+        __ONCE__ = true
+    end
+    -- field[y][x]
+    local x, y = figure.x, figure.y
+    local f = figure.fig
+    for i = 0, figureHeight - 1 do
+        for j = 0, figureWidth - 1 do
+            if y + i <= fieldHeight and x + j <= fieldWidth then
+                local v = field[y + i][x + j]
+                if v and f[i + 1][j + 1] then
+                    return false
+                end
+            end
+        end
+    end
+    return true
 end
 
 -- возвращает true если фигуру можно поместить в данную позицию игрового поля.
